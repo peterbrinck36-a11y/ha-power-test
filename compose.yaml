@@ -1,0 +1,30 @@
+# Marina shore-power monitor — single-container deployment.
+#
+# Works two ways:
+#   1. Build locally:            docker compose up -d --build
+#   2. Pull the GHCR image:      docker compose pull && docker compose up -d
+#      (remove the `build:` block, set `image:` to your GHCR path)
+#
+# Dockge: paste this file, set `image:` to your GHCR repo, and keep the
+# ./data volume mount — that is where the SQLite database lives.
+
+services:
+  marina-power:
+    # ⚠️ Replace with your own GHCR path, e.g. ghcr.io/your-user/marina-power:latest
+    image: ghcr.io/your-github-username/marina-power:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: marina-power
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Inside the container the database always lives on the mounted volume.
+      DATABASE_PATH: /app/data/marina.db
+      # Set COOKIE_SECURE=auto (default) behind an HTTPS reverse proxy that
+      # forwards X-Forwarded-Proto; use false only for plain-HTTP LAN testing.
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

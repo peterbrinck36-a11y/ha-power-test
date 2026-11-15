@@ -1,0 +1,26 @@
+# Dependencies / build output — installed and produced inside the image build.
+node_modules
+.next
+out
+
+# Local secrets and runtime data — never enter the image.
+.env
+.env.local
+.env*.local
+data
+
+# Git and CI housekeeping.
+.git
+.github
+
+# Docs, tests and editor noise — not needed inside the build.
+# (docs/ IS intentionally kept: docs/ha-sample.json enables mock mode demos.)
+e2e
+playwright-report
+test-results
+blob-report
+*.md
+.agents
+.idea
+.vscode
+*.tsbuildinfo

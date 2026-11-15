@@ -1,0 +1,110 @@
+﻿[
+  {
+    "entity_id": "sensor.stue_lampe_stue_power",
+    "state": "302.6",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "W",
+      "device_class": "power",
+      "friendly_name": "Strøm kontor Power"
+    },
+    "last_changed": "2026-11-15T20:30:49.604105+00:00",
+    "last_reported": "2026-11-15T20:30:49.604105+00:00",
+    "last_updated": "2026-11-15T20:30:49.604105+00:00",
+    "context": {
+      "id": "01M7GEFJR4CR8538R7MBTW5D17",
+      "parent_id": null,
+      "user_id": null
+    }
+  },
+  {
+    "entity_id": "sensor.stue_lampe_stue_energy",
+    "state": "195.239",
+    "attributes": {
+      "state_class": "total_increasing",
+      "unit_of_measurement": "kWh",
+      "device_class": "energy",
+      "friendly_name": "Strøm kontor Energy"
+    },
+    "last_changed": "2026-11-15T20:30:46.559255+00:00",
+    "last_reported": "2026-11-15T20:30:46.559255+00:00",
+    "last_updated": "2026-11-15T20:30:46.559255+00:00",
+    "context": {
+      "id": "01M7GEFFRZ5ANM6ASAMNP0J9CV",
+      "parent_id": null,
+      "user_id": null
+    }
+  },
+  {
+    "entity_id": "sensor.shore_power_boat13_power",
+    "state": "unavailable",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "W",
+      "device_class": "power",
+      "friendly_name": "Boat 13 Shore Power"
+    },
+    "last_changed": "2026-11-15T20:31:10.112000+00:00",
+    "last_reported": "2026-11-15T20:31:10.112000+00:00",
+    "last_updated": "2026-11-15T20:31:10.112000+00:00",
+    "context": {
+      "id": "01M7GEFJSKAAQ8C4M2P7VDQW1T",
+      "parent_id": null,
+      "user_id": null
+    }
+  },
+  {
+    "entity_id": "sensor.shore_power_boat13_energy",
+    "state": "88.4",
+    "attributes": {
+      "state_class": "total_increasing",
+      "unit_of_measurement": "kWh",
+      "device_class": "energy",
+      "friendly_name": "Boat 13 Shore Energy"
+    },
+    "last_changed": "2026-11-15T20:31:05.330000+00:00",
+    "last_reported": "2026-11-15T20:31:05.330000+00:00",
+    "last_updated": "2026-11-15T20:31:05.330000+00:00",
+    "context": {
+      "id": "01M7GEFJSC1R2T9KXQ4M8N3B6V",
+      "parent_id": null,
+      "user_id": null
+    }
+  },
+  {
+    "entity_id": "sensor.shore_power_boat14_power",
+    "state": "4.8",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "kW",
+      "device_class": "power",
+      "friendly_name": "Boat 14 Shore Power (kW meter)"
+    },
+    "last_changed": "2026-11-15T20:30:58.000000+00:00",
+    "last_reported": "2026-11-15T20:30:58.000000+00:00",
+    "last_updated": "2026-11-15T20:30:58.000000+00:00",
+    "context": {
+      "id": "01M7GEFJZ6P0M4XV1Q8T3K5R7W",
+      "parent_id": null,
+      "user_id": null
+    }
+  },
+  {
+    "entity_id": "sensor.shore_power_boat14_energy",
+    "state": "1200.5",
+    "attributes": {
+      "state_class": "total_increasing",
+      "unit_of_measurement": "kWh",
+      "device_class": "energy",
+      "friendly_name": "Boat 14 Shore Energy"
+    },
+    "last_changed": "2026-11-15T20:30:52.000000+00:00",
+    "last_reported": "2026-11-15T20:30:52.000000+00:00",
+    "last_updated": "2026-11-15T20:30:52.000000+00:00",
+    "context": {
+      "id": "01M7GEFJZ1K4T7W2Q5M9X3V6R8",
+      "parent_id": null,
+      "user_id": null
+    }
+  }
+]
