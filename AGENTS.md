@@ -122,6 +122,9 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
 - **CI has no `.env`** (gitignored) — `scripts/prepare-standalone.mjs` must not
   require it; the E2E global-setup passes `HA_MOCK_FILE` via the server's
   process environment, which always wins over any `.env` file.
+- **Docker build context excludes `e2e/`** — so `next build`'s project-wide
+  type check must never reference test files: `tsconfig.json` excludes
+  `e2e`, `playwright.config.ts`, and `scripts`. Keep app/test type worlds apart.
 - **Playwright webServer teardown hangs on Windows** with the Next.js standalone
   server (its worker child inherits the stdio pipes). This repo instead spawns
   the server in `e2e/global-setup.ts` and kills the process tree with
