@@ -37,15 +37,23 @@ function copyDir(src, dest) {
 // 1. Static assets (Next standalone does not copy them itself).
 copyDir(staticSrc, staticDest);
 
-// 2. Absolute mock path inside the standalone .env.
+// 2. Absolute mock path inside the standalone .env — but only if the project
+//    has a .env at all. On CI there is none (gitignored); there the E2E
+//    global-setup passes HA_MOCK_FILE via the server's process environment,
+//    which always wins over any .env file.
 const absoluteMock = path.join(root, "docs/ha-sample.json").replace(/\\/g, "/");
-const env = fs.readFileSync(standaloneEnvPath, "utf8");
-const patched = env
-  .split(/\r?\n/)
-  .map((line) =>
-    line.startsWith("HA_MOCK_FILE=") ? `HA_MOCK_FILE=${absoluteMock}` : line,
-  )
-  .join("\n");
-fs.writeFileSync(standaloneEnvPath, patched);
-
-console.log("[prepare-standalone] static copied + HA_MOCK_FILE absolutized");
+if (fs.existsSync(standaloneEnvPath)) {
+  const env = fs.readFileSync(standaloneEnvPath, "utf8");
+  const patched = env
+    .split(/\r?\n/)
+    .map((line) =>
+      line.startsWith("HA_MOCK_FILE=") ? `HA_MOCK_FILE=${absoluteMock}` : line,
+    )
+    .join("\n");
+  fs.writeFileSync(standaloneEnvPath, patched);
+  console.log("[prepare-standalone] static copied + HA_MOCK_FILE absolutized");
+} else {
+  console.log(
+    "[prepare-standalone] static copied (no standalone .env — HA_MOCK_FILE comes from the environment)",
+  );
+}
