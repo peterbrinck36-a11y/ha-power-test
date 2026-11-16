@@ -25,7 +25,7 @@ export type PowerReading = EntityReading & {
 };
 
 export type EnergyReading = EntityReading & {
-  /** Raw total from the meter. */
+  /** Raw total from the meter, normalized to kWh (Wh/MWh sensors converted). */
   kwhTotal: number | null;
   /** `kwhTotal − kwhOffset`, clamped at 0 — what the boat owner sees. */
   kwhAdjusted: number | null;

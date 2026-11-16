@@ -113,7 +113,7 @@ function MeterDialog({
         />
 
         <SensorPicker
-          label="Energy sensor (kWh)"
+          label="Energy sensor (Wh/kWh)"
           name="energyEntityId"
           value={energyEntity}
           onChange={setEnergyEntity}

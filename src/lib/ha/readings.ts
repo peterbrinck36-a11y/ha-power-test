@@ -4,7 +4,15 @@ import type { Meter } from "@/lib/schema";
 import type { MeterReading, ReadingsResponse } from "@/lib/api-types";
 
 import { getHaStates } from "./client";
-import { clampOffsetTotal, friendlyName, lastUpdated, parseNumeric, toWatts, unitOf } from "./parse";
+import {
+  clampOffsetTotal,
+  friendlyName,
+  lastUpdated,
+  parseNumeric,
+  toKwh,
+  toWatts,
+  unitOf,
+} from "./parse";
 
 /** Build offset-adjusted, owner-safe readings for the given meters. */
 export async function buildReadings(meters: Meter[]): Promise<ReadingsResponse> {
@@ -20,7 +28,8 @@ export async function buildReadings(meters: Meter[]): Promise<ReadingsResponse> 
     const powerUnit = powerState ? unitOf(powerState) : null;
     const energyUnit = energyState ? unitOf(energyState) : null;
 
-    const kwhTotal = energy.value;
+    // Offsets are entered in kWh, so normalize Wh/MWh sensors before applying them.
+    const kwhTotal = energy.value === null ? null : toKwh(energy.value, energyUnit);
     const kwhAdjusted =
       kwhTotal === null ? null : clampOffsetTotal(kwhTotal, meter.kwhOffset);
 

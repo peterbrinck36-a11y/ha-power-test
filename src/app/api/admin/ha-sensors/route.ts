@@ -9,7 +9,7 @@ import type { SensorsResponse, SensorOption } from "@/lib/api-types";
 export const dynamic = "force-dynamic";
 
 const POWER_UNITS = new Set(["w", "kw"]);
-const ENERGY_UNITS = new Set(["wh", "kwh"]);
+const ENERGY_UNITS = new Set(["wh", "kwh", "mwh"]);
 
 function isPowerOrEnergySensor(state: HaState): boolean {
   const deviceClass = state.attributes?.device_class;

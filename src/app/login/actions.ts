@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { sql } from "drizzle-orm";
-import { compareSync } from "bcryptjs";
+import { compare, hashSync } from "bcryptjs";
 
 import { db } from "@/lib/db";
 import { users, type User } from "@/lib/schema";
@@ -16,6 +16,28 @@ export type LoginState = { error: string | null };
 const MAX_ATTEMPTS = Number(process.env.MAX_LOGIN_ATTEMPTS ?? 10);
 const WINDOW_MS = 15 * 60 * 1000;
 const attempts = new Map<string, { count: number; resetAt: number }>();
+
+// Number of reverse proxies in front of the app that APPEND to X-Forwarded-For
+// (Nginx Proxy Manager, Traefik, Caddy, … = 1). The client IP is taken that many
+// entries from the RIGHT, because everything further left is client-supplied
+// and can be forged to dodge the rate limit. 0 = ignore the header entirely
+// (direct exposure without a proxy — all clients then share one bucket).
+const TRUSTED_PROXY_HOPS = Math.max(0, Math.floor(Number(process.env.TRUSTED_PROXY_HOPS ?? 1)) || 0);
+
+function clientKey(forwardedFor: string | null): string {
+  if (TRUSTED_PROXY_HOPS === 0 || !forwardedFor) return "local";
+  const hops = forwardedFor
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (hops.length === 0) return "local";
+  // Fewer entries than trusted proxies → use the left-most (best available).
+  return hops[Math.max(0, hops.length - TRUSTED_PROXY_HOPS)];
+}
+
+// Compared against when the account doesn't exist, so a wrong username takes
+// as long as a wrong password (no account enumeration via response time).
+const DUMMY_HASH = hashSync("not-a-real-password", 12);
 
 function consumeRateLimit(key: string): { ok: boolean; minutesLeft: number } {
   const now = Date.now();
@@ -54,7 +76,7 @@ export async function login(
   }
 
   const headerList = await headers();
-  const ip = headerList.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  const ip = clientKey(headerList.get("x-forwarded-for"));
   const limit = consumeRateLimit(ip);
   if (!limit.ok) {
     return {
@@ -72,7 +94,8 @@ export async function login(
     .all();
   const user: User | undefined = rows[0];
 
-  const passwordOk = user ? compareSync(password, user.passwordHash) : false;
+  // Async compare keeps the event loop free; always run it (see DUMMY_HASH).
+  const passwordOk = await compare(password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !passwordOk) {
     return { error: "Invalid email/username or password." };
   }
