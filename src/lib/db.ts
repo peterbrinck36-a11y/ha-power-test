@@ -39,16 +39,64 @@ function createSqlite(): Database.Database {
 }
 
 export const sqlite = createSqlite();
-sqlite.pragma("journal_mode = WAL");
+// busy_timeout first: parallel Next build workers (and multiple containers)
+// initialize this module at the same time, and `journal_mode = WAL` itself
+// needs an exclusive lock — without a timeout it fails instantly with
+// SQLITE_BUSY. This is also why it must come before the WAL switch.
+sqlite.pragma("busy_timeout = 10000");
 sqlite.pragma("foreign_keys = ON");
-sqlite.pragma("busy_timeout = 5000");
+
+function isBusyError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const candidate = err as { code?: string; message?: string; cause?: unknown };
+  if (
+    candidate.code === "SQLITE_BUSY" ||
+    candidate.code === "SQLITE_LOCKED" ||
+    candidate.code === "SQLITE_BUSY_SNAPSHOT"
+  ) {
+    return true;
+  }
+  if (/database (table )?is locked/i.test(candidate.message ?? "")) return true;
+  return candidate.cause ? isBusyError(candidate.cause) : false;
+}
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Runs a DB initialization step that may race with other build workers or
+ * processes, retrying while SQLite reports a lock. `busy_timeout` handles
+ * most of this; the retry covers the checkpoint/upgrade windows where SQLite
+ * returns SQLITE_BUSY immediately instead of waiting.
+ */
+function withBusyRetry<T>(label: string, fn: () => T, attempts = 10): T {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return fn();
+    } catch (err) {
+      lastError = err;
+      if (!isBusyError(err)) throw err;
+      sleepSync(20 + i * 30 + Math.floor(Math.random() * 20));
+    }
+  }
+  throw new Error(
+    `[db] ${label} still hit SQLITE_BUSY after ${attempts} attempts: ` +
+      `${lastError instanceof Error ? lastError.message : String(lastError)}`,
+  );
+}
+
+withBusyRetry("switching to WAL", () => sqlite.pragma("journal_mode = WAL"));
 
 export const db = drizzle(sqlite, { schema });
 
 // Apply pending Drizzle migrations (synchronous with better-sqlite3).
 // In Docker the drizzle/ folder is copied into the standalone bundle via
 // outputFileTracingIncludes, so process.cwd()/drizzle resolves at runtime.
-migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
+withBusyRetry("applying migrations", () =>
+  migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") }),
+);
 
 /**
  * Ensures every meter that already has an owner has an open assignment period.
@@ -69,10 +117,11 @@ function backfillOpenAssignments(): void {
         select 1 from meter_assignments a
         where a.meter_id = m.id and a.ended_at is null
       )
+    on conflict do nothing
   `);
 }
 
-backfillOpenAssignments();
+withBusyRetry("backfilling open assignments", backfillOpenAssignments);
 
 /**
  * Seeds the initial admin from ADMIN_EMAIL / ADMIN_PASSWORD when no admin
@@ -101,4 +150,4 @@ function seedAdminIfMissing(): void {
   }
 }
 
-seedAdminIfMissing();
+withBusyRetry("seeding the initial admin", seedAdminIfMissing);

@@ -147,6 +147,11 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   NOT "seconds from now" — compute `Math.floor(Date.now() / 1000) + TTL`.
 - **Next build workers** run page-data collection in parallel: any DB seeding at
   module init must be atomic/race-safe (see `seedAdminIfMissing` in `src/lib/db.ts`).
+  The same workers also race on `journal_mode = WAL`, which needs an exclusive lock
+  — `src/lib/db.ts` sets `busy_timeout` *before* the WAL switch and retries
+  `SQLITE_BUSY` around WAL/migrate/backfill/seed. Without that, a Docker build on
+  slow (arm64/QEMU) runners intermittently dies with
+  `SqliteError: database is locked` at `src/lib/db.ts:42`.
 - **Turbopack tracing**: dynamic `fs` paths in server modules need
   `/* turbopackIgnore: true */` or the whole project gets traced into the bundle.
 - **Server actions must return `{ error: null, ok: true }` on success** — dialogs
