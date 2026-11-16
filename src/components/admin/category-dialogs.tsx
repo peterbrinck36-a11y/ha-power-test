@@ -13,11 +13,11 @@ import { CATEGORY_COLORS, categoryColor } from "@/lib/category-colors";
 import { initialFormState } from "@/lib/forms";
 
 const inputClasses =
-  "mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200";
+  "mt-1.5 w-full rounded-lg border border-line-strong px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200";
 const primaryButtonClasses =
-  "rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 disabled:opacity-60";
+  "rounded-lg bg-sky-600 dark:bg-sky-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 dark:hover:bg-sky-600 disabled:opacity-60";
 const secondaryButtonClasses =
-  "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50";
+  "rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm text-ink-secondary hover:bg-surface-muted";
 
 function formatKwh(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
@@ -53,7 +53,7 @@ function CategoryDialog({
         {isEdit ? <input type="hidden" name="id" value={category.id} /> : null}
 
         <div>
-          <label htmlFor="category-name" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="category-name" className="block text-sm font-medium text-ink-secondary">
             Name
           </label>
           <input
@@ -71,7 +71,7 @@ function CategoryDialog({
         <div>
           <label
             htmlFor="category-min-kwh"
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-medium text-ink-secondary"
           >
             Starts at (kWh)
           </label>
@@ -85,7 +85,7 @@ function CategoryDialog({
             defaultValue={isEdit ? formatKwh(category.minKwh) : defaultMinKwh}
             className={inputClasses}
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-ink-muted">
             Lower bound of the tier for the calendar month. Tiers are ordered by this
             value and it must be unique.
           </p>
@@ -94,7 +94,7 @@ function CategoryDialog({
         <div>
           <label
             htmlFor="category-color"
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-medium text-ink-secondary"
           >
             Color
           </label>
@@ -122,7 +122,7 @@ function CategoryDialog({
         </div>
 
         {state.error ? (
-          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded-lg bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
             {state.error}
           </p>
         ) : null}
@@ -174,7 +174,7 @@ export function CategoryRowActions({ category }: { category: CategoryTier }) {
       <button
         type="button"
         onClick={() => setEditOpen(true)}
-        className="rounded-lg px-2 py-1 text-sm text-sky-700 hover:bg-sky-50"
+        className="rounded-lg px-2 py-1 text-sm text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10"
       >
         Edit
       </button>
@@ -197,14 +197,14 @@ export function CategoryRowActions({ category }: { category: CategoryTier }) {
               event.preventDefault();
             }
           }}
-          className="rounded-lg px-2 py-1 text-sm text-red-600 hover:bg-red-50"
+          className="rounded-lg px-2 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
         >
           Delete
         </button>
       </form>
 
       {deleteState.error ? (
-        <span role="alert" className="text-xs text-red-600">
+        <span role="alert" className="text-xs text-red-600 dark:text-red-400">
           {deleteState.error}
         </span>
       ) : null}

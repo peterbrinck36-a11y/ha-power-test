@@ -16,11 +16,11 @@ export type UserRow = {
 };
 
 const inputClasses =
-  "mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200";
+  "mt-1.5 w-full rounded-lg border border-line-strong px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200";
 const primaryButtonClasses =
-  "rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 disabled:opacity-60";
+  "rounded-lg bg-sky-600 dark:bg-sky-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 dark:hover:bg-sky-600 disabled:opacity-60";
 const secondaryButtonClasses =
-  "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50";
+  "rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm text-ink-secondary hover:bg-surface-muted";
 
 function UserDialog({
   open,
@@ -53,23 +53,23 @@ function UserDialog({
     >
       {showEmailFallback ? (
         <div className="space-y-4">
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-ink-secondary">
             The account was created, but the invitation email could not be sent.
           </p>
           {state.emailError ? (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="rounded-lg bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
               {state.emailError}
             </p>
           ) : null}
           <div>
-            <p className="text-sm font-medium text-slate-700">Temporary password</p>
+            <p className="text-sm font-medium text-ink-secondary">Temporary password</p>
             <code
               data-temp-password
-              className="mt-1 block break-all rounded-lg bg-slate-100 px-3 py-2 font-mono text-sm text-slate-900"
+              className="mt-1 block break-all rounded-lg bg-surface-muted px-3 py-2 font-mono text-sm text-ink"
             >
               {state.tempPassword}
             </code>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-ink-muted">
               Shown only once. Share it securely — the user must choose a new password after
               signing in.
             </p>
@@ -85,7 +85,7 @@ function UserDialog({
           {isEdit ? <input type="hidden" name="id" value={user.id} /> : null}
 
           <div>
-            <label htmlFor="user-email" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="user-email" className="block text-sm font-medium text-ink-secondary">
               Email
             </label>
             <input
@@ -99,7 +99,7 @@ function UserDialog({
           </div>
 
           <div>
-            <label htmlFor="user-username" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="user-username" className="block text-sm font-medium text-ink-secondary">
               Username
             </label>
             <input
@@ -113,7 +113,7 @@ function UserDialog({
           </div>
 
           <div>
-            <label htmlFor="user-role" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="user-role" className="block text-sm font-medium text-ink-secondary">
               Role
             </label>
             <select
@@ -136,7 +136,7 @@ function UserDialog({
                 defaultChecked={user.active}
                 className="h-4 w-4"
               />
-              <label htmlFor="user-active" className="text-sm text-slate-700">
+              <label htmlFor="user-active" className="text-sm text-ink-secondary">
                 Account active
               </label>
             </div>
@@ -146,7 +146,7 @@ function UserDialog({
             <div>
               <label
                 htmlFor="user-password"
-                className="block text-sm font-medium text-slate-700"
+                className="block text-sm font-medium text-ink-secondary"
               >
                 New password (leave blank to keep the current one)
               </label>
@@ -158,20 +158,20 @@ function UserDialog({
                 autoComplete="new-password"
                 className={inputClasses}
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-ink-muted">
                 At least {MIN_PASSWORD_LENGTH} characters. Setting a password signs the user out
                 everywhere; they can use it immediately.
               </p>
             </div>
           ) : (
-            <p className="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-800">
+            <p className="rounded-lg bg-sky-50 dark:bg-sky-500/10 px-3 py-2 text-sm text-sky-800 dark:text-sky-300">
               A temporary password is generated and emailed to the user. They choose their own
               password the first time they sign in.
             </p>
           )}
 
           {state.error ? (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="rounded-lg bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
               {state.error}
             </p>
           ) : null}
@@ -219,7 +219,7 @@ export function UserRowActions({ user }: { user: UserRow }) {
       <button
         type="button"
         onClick={() => setEditOpen(true)}
-        className="rounded-lg px-2 py-1 text-sm text-sky-700 hover:bg-sky-50"
+        className="rounded-lg px-2 py-1 text-sm text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10"
       >
         Edit
       </button>
@@ -233,14 +233,14 @@ export function UserRowActions({ user }: { user: UserRow }) {
               event.preventDefault();
             }
           }}
-          className="rounded-lg px-2 py-1 text-sm text-red-600 hover:bg-red-50"
+          className="rounded-lg px-2 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
         >
           Delete
         </button>
       </form>
 
       {deleteState.error ? (
-        <span role="alert" className="text-xs text-red-600">
+        <span role="alert" className="text-xs text-red-600 dark:text-red-400">
           {deleteState.error}
         </span>
       ) : null}

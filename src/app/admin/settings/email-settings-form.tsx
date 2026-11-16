@@ -7,11 +7,11 @@ import { initialFormState } from "@/lib/forms";
 import { saveEmailSettingsAction, sendTestEmailAction } from "./actions";
 
 const inputClasses =
-  "mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200";
+  "mt-1.5 w-full rounded-lg border border-line-strong px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200";
 const primaryButtonClasses =
-  "rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 disabled:opacity-60";
+  "rounded-lg bg-sky-600 dark:bg-sky-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700 dark:hover:bg-sky-600 disabled:opacity-60";
 const secondaryButtonClasses =
-  "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60";
+  "rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm text-ink-secondary hover:bg-surface-muted disabled:opacity-60";
 
 export type EmailSettingsView = {
   address: string;
@@ -29,7 +29,7 @@ export function EmailSettingsForm({ settings }: { settings: EmailSettingsView })
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label htmlFor="email-address" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="email-address" className="block text-sm font-medium text-ink-secondary">
           Gmail address
         </label>
         <input
@@ -41,13 +41,13 @@ export function EmailSettingsForm({ settings }: { settings: EmailSettingsView })
           placeholder="marina.shorepower@gmail.com"
           className={inputClasses}
         />
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-ink-muted">
           The account that sends the emails. Its address is the visible sender.
         </p>
       </div>
 
       <div>
-        <label htmlFor="email-from-name" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="email-from-name" className="block text-sm font-medium text-ink-secondary">
           Sender name
         </label>
         <input
@@ -61,7 +61,7 @@ export function EmailSettingsForm({ settings }: { settings: EmailSettingsView })
       </div>
 
       <div>
-        <label htmlFor="email-app-password" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="email-app-password" className="block text-sm font-medium text-ink-secondary">
           Google app password
         </label>
         <input
@@ -74,32 +74,32 @@ export function EmailSettingsForm({ settings }: { settings: EmailSettingsView })
           }
           className={inputClasses}
         />
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-ink-muted">
           Create it at myaccount.google.com/apppasswords (2-Step Verification required). Stored
           encrypted; it is never shown again.
         </p>
       </div>
 
-      <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+      <div className="rounded-lg bg-surface-muted px-3 py-2 text-sm text-ink-muted">
         {settings.hasPassword && settings.passwordReadable ? (
-          <span className="text-emerald-700">Email is configured.</span>
+          <span className="text-emerald-700 dark:text-emerald-300">Email is configured.</span>
         ) : settings.hasPassword ? (
-          <span className="text-amber-700">
+          <span className="text-amber-700 dark:text-amber-300">
             A password is stored but cannot be decrypted (the signing secret changed) — enter it
             again.
           </span>
         ) : (
-          <span className="text-amber-700">Email is not configured yet.</span>
+          <span className="text-amber-700 dark:text-amber-300">Email is not configured yet.</span>
         )}
       </div>
 
       {state.error ? (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded-lg bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
           {state.error}
         </p>
       ) : null}
       {state.ok && state.notice ? (
-        <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <p role="status" className="rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
           {state.notice}
         </p>
       ) : null}
@@ -119,7 +119,7 @@ export function TestEmailForm({ defaultRecipient }: { defaultRecipient: string }
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label htmlFor="test-email-to" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="test-email-to" className="block text-sm font-medium text-ink-secondary">
           Send a test email to
         </label>
         <input
@@ -133,12 +133,12 @@ export function TestEmailForm({ defaultRecipient }: { defaultRecipient: string }
       </div>
 
       {state.error ? (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded-lg bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
           {state.error}
         </p>
       ) : null}
       {state.ok && state.notice ? (
-        <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <p role="status" className="rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
           {state.notice}
         </p>
       ) : null}

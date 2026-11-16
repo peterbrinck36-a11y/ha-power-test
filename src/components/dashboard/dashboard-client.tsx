@@ -68,7 +68,7 @@ export function DashboardClient() {
   return (
     <div className="space-y-4">
       {data ? (
-        <p className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
+        <p className="flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
           <span>
             Auto-refreshes every 10s · refreshed{" "}
             <RelativeTime
@@ -79,7 +79,7 @@ export function DashboardClient() {
           <button
             type="button"
             onClick={() => void load()}
-            className="font-medium text-sky-600 hover:underline"
+            className="font-medium text-sky-600 dark:text-sky-400 hover:underline"
           >
             Refresh now
           </button>
@@ -89,7 +89,7 @@ export function DashboardClient() {
       {fetchError ? (
         <p
           role="alert"
-          className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-xl bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"
         >
           Couldn&apos;t refresh readings ({fetchError}) — retrying automatically.
         </p>
@@ -98,7 +98,7 @@ export function DashboardClient() {
       {data?.degraded ? (
         <p
           role="alert"
-          className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-xl bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
         >
           Home Assistant is unreachable — sensors will show as unavailable.
           {data.error ? ` (${data.error})` : null}
@@ -108,13 +108,13 @@ export function DashboardClient() {
       {data?.month ? <CategoryCard month={data.month} /> : null}
 
       {!data ? (
-        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-slate-500">Loading readings…</p>
+        <div className="rounded-2xl bg-surface p-8 text-center shadow-sm">
+          <p className="text-sm text-ink-muted">Loading readings…</p>
         </div>
       ) : data.readings.length === 0 ? (
-        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-          <p className="text-lg font-medium text-slate-900">No meters assigned yet</p>
-          <p className="mt-1 text-sm text-slate-500">
+        <div className="rounded-2xl bg-surface p-8 text-center shadow-sm">
+          <p className="text-lg font-medium text-ink">No meters assigned yet</p>
+          <p className="mt-1 text-sm text-ink-muted">
             Contact the marina admin to get your boat&apos;s shore-power meter connected.
           </p>
         </div>

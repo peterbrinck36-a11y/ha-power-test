@@ -98,7 +98,7 @@ export function SensorPicker({
 
   return (
     <div ref={containerRef} className="relative">
-      <label htmlFor={name} className="block text-sm font-medium text-slate-700">
+      <label htmlFor={name} className="block text-sm font-medium text-ink-secondary">
         {label}
       </label>
       <input
@@ -130,11 +130,11 @@ export function SensorPicker({
             setOpen(false);
           }
         }}
-        className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+        className="mt-1.5 w-full rounded-lg border border-line-strong px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
       />
 
       {open && matches.length > 0 ? (
-        <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+        <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-line bg-surface shadow-lg">
           {matches.map((sensor, index) => (
             <li key={sensor.entityId}>
               <button
@@ -144,12 +144,12 @@ export function SensorPicker({
                   select(sensor.entityId);
                 }}
                 onMouseEnter={() => setHighlighted(index)}
-                className={`w-full px-3 py-2 text-left ${index === highlighted ? "bg-sky-50" : ""}`}
+                className={`w-full px-3 py-2 text-left ${index === highlighted ? "bg-sky-50 dark:bg-sky-500/10" : ""}`}
               >
-                <span className="block text-sm font-medium text-slate-800">
+                <span className="block text-sm font-medium text-ink">
                   {sensor.friendlyName ?? sensor.entityId}
                 </span>
-                <span className="block text-xs text-slate-500">
+                <span className="block text-xs text-ink-muted">
                   {sensor.entityId}
                   {sensor.unit ? ` · ${sensor.unit}` : ""}
                   {sensor.deviceClass ? ` · ${sensor.deviceClass}` : ""}
@@ -160,7 +160,7 @@ export function SensorPicker({
         </ul>
       ) : null}
 
-      <p className="mt-1 text-xs text-slate-500">{hint}</p>
+      <p className="mt-1 text-xs text-ink-muted">{hint}</p>
     </div>
   );
 }

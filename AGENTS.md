@@ -120,6 +120,19 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
 - No 0-kWh tier is enforced: a total below the first threshold renders as "Not ranked
   yet" and the admin page warns when no tier starts at 0. The category card is hidden
   when there are no tiers; admins previewing `/dashboard` get `month: null` on purpose.
+- Theming uses semantic tokens from `src/app/globals.css` (mapped via `@theme
+  inline`): `bg-canvas` for page backgrounds, `bg-surface` for cards/headers,
+  `bg-surface-muted` for subtle fills and hover, `border-line`/`border-line-strong`,
+  and `text-ink`/`ink-secondary`/`ink-muted`/`ink-soft` for text. Components must
+  not use raw `slate-*` or `bg-white` — status colors (red/emerald/amber/sky) are
+  the exception and keep explicit `dark:` variants (e.g. `bg-red-50
+  dark:bg-red-500/10`).
+- Dark mode is class-based (`@custom-variant dark (&:where(.dark, .dark *))`).
+  `themeInitScript` from `src/lib/theme.ts` is inlined in `<head>` and sets `.dark`
+  plus `color-scheme` from `localStorage["marina-theme"]` or `prefers-color-scheme`
+  before paint (no flash). `ThemeToggle` persists the choice and only follows OS
+  changes while no explicit choice exists. `:root` and `.dark` both set
+  `color-scheme` so native inputs/scrollbars match the theme.
 - UI: mobile-first Tailwind utilities; small hand-rolled components in `src/components`.
 - When `npm install` warns about blocked install scripts (npm ≥ 11.20), approve the
   native/native-adjacent packages: `npm install-scripts approve better-sqlite3 esbuild`
@@ -224,6 +237,11 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
 - **Password policy lives in a client-safe module**: import
   `MIN_PASSWORD_LENGTH` from `src/lib/password-policy.ts`; importing
   `src/lib/passwords.ts` (node:crypto) into a client component breaks the bundle.
+- **Theme tokens, not `dark:` pairs**: page wrappers use `bg-canvas` — the old
+  `bg-slate-50/100` classes were codemodded to `bg-surface-muted`, which is only
+  meant for subtle fills, so a new full-page container should not copy it. The
+  root `body` already paints `bg-canvas`; nested `min-h-dvh` wrappers need no
+  background at all.
 - **E2E gotchas** (see `e2e/helpers/*`): the SQLite DB path is unique per run
   (never unlink on Windows); seeds are idempotent (beforeAll re-runs when
   Playwright restarts a worker after a failed test); `MAX_LOGIN_ATTEMPTS=1000`

@@ -46,10 +46,10 @@ export default async function AdminMetersPage() {
         <NewMeterButton owners={owners} />
       </div>
 
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl bg-surface shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-muted">
               <th className="px-4 py-3">Meter</th>
               <th className="px-4 py-3">Owner</th>
               <th className="px-4 py-3">Power sensor</th>
@@ -63,21 +63,21 @@ export default async function AdminMetersPage() {
             {meterRows.map((row) => {
               const assignment = assignmentByMeter.get(row.id) ?? null;
               return (
-                <tr key={row.id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-3 font-medium text-slate-900">{row.name}</td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {row.ownerUsername ?? <span className="text-slate-400">unassigned</span>}
+                <tr key={row.id} className="border-b border-line last:border-0">
+                  <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
+                  <td className="px-4 py-3 text-ink-muted">
+                    {row.ownerUsername ?? <span className="text-ink-soft">unassigned</span>}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                  <td className="px-4 py-3 font-mono text-xs text-ink-muted">
                     {row.powerEntityId}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                  <td className="px-4 py-3 font-mono text-xs text-ink-muted">
                     {row.energyEntityId}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-ink-muted">
                     {assignment ? assignment.startedAt.toLocaleDateString() : "—"}
                   </td>
-                  <td className="px-4 py-3 tabular-nums text-slate-600">
+                  <td className="px-4 py-3 tabular-nums text-ink-muted">
                     {assignment ? `${assignment.consumedKwh.toFixed(2)} kWh` : "—"}
                   </td>
                   <td className="px-4 py-3">
@@ -97,7 +97,7 @@ export default async function AdminMetersPage() {
             })}
             {meterRows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-6 text-center text-ink-muted">
                   No meters yet — create one to get started.
                 </td>
               </tr>
@@ -106,7 +106,7 @@ export default async function AdminMetersPage() {
         </table>
       </div>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-muted">
         Sensors are picked from Home Assistant (power/energy entities). When HA is
         unreachable you can still type an entity_id manually. Consumption is stored in
         this app and sampled every 2 minutes; assigning a meter to a different owner

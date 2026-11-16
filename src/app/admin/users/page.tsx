@@ -27,10 +27,10 @@ export default async function AdminUsersPage() {
         <NewUserButton />
       </div>
 
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl bg-surface shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-muted">
               <th className="px-4 py-3">User</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Status</th>
@@ -41,33 +41,33 @@ export default async function AdminUsersPage() {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-slate-100 last:border-0">
+              <tr key={row.id} className="border-b border-line last:border-0">
                 <td className="px-4 py-3">
-                  <span className="font-medium text-slate-900">{row.username}</span>
+                  <span className="font-medium text-ink">{row.username}</span>
                   <span
                     className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
                       row.role === "admin"
-                        ? "bg-sky-100 text-sky-700"
-                        : "bg-slate-100 text-slate-600"
+                        ? "bg-sky-100 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                        : "bg-surface-muted text-ink-muted"
                     }`}
                   >
                     {row.role}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{row.email}</td>
+                <td className="px-4 py-3 text-ink-muted">{row.email}</td>
                 <td className="px-4 py-3">
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs ${
                       row.active
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-red-100 text-red-700"
+                        ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                        : "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300"
                     }`}
                   >
                     {row.active ? "active" : "disabled"}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{row.meterCount}</td>
-                <td className="px-4 py-3 text-slate-500">
+                <td className="px-4 py-3 text-ink-muted">{row.meterCount}</td>
+                <td className="px-4 py-3 text-ink-muted">
                   {row.createdAt.toLocaleDateString()}
                 </td>
                 <td className="px-4 py-3">
@@ -87,7 +87,7 @@ export default async function AdminUsersPage() {
         </table>
       </div>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-muted">
         Deleting a user unassigns their meters (they stay configured, just unowned).
         You cannot disable, demote, or delete your own account.
       </p>

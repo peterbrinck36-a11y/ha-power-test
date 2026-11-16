@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { themeInitScript } from "@/lib/theme";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,8 +12,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-dvh bg-slate-100 font-sans text-slate-900 antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="min-h-dvh bg-canvas font-sans text-ink antialiased">
         {children}
       </body>
     </html>

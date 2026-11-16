@@ -27,6 +27,9 @@ total starts at 0 when their meter is assigned and monthly reports are possible.
 - **Emailed invitations** — new users receive a temporary password by email
   (Gmail SMTP), must choose their own password on first sign-in, and an admin
   can still set a password directly for testing or hand-over.
+- **Dark mode** — a sun/moon toggle in every header (and on the login screen)
+  switches the whole UI, remembers the choice per browser, and otherwise follows
+  the operating system's preference.
 - **Home Assistant sensor picker** — searchable dropdown fed by a filtered
   `/api/states` query (power/energy device classes, W/kW/Wh/kWh units), with
   manual `entity_id` entry as a fallback.

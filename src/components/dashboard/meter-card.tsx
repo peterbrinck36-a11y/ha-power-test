@@ -13,17 +13,17 @@ type ChipTone = "live" | "warn" | "muted";
 function Chip({ tone, label }: { tone: ChipTone; label: string }) {
   const classes =
     tone === "live"
-      ? "bg-emerald-100 text-emerald-700"
+      ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
       : tone === "muted"
-        ? "bg-slate-100 text-slate-600"
-        : "bg-amber-100 text-amber-700";
+        ? "bg-surface-muted text-ink-muted"
+        : "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300";
 
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${classes}`}
     >
       {tone === "live" ? (
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
       ) : null}
       {label}
     </span>
@@ -71,9 +71,9 @@ export function MeterCard({
   }
 
   return (
-    <section aria-label={reading.meterName} className="rounded-2xl bg-white p-5 shadow-sm sm:p-6">
+    <section aria-label={reading.meterName} className="rounded-2xl bg-surface p-5 shadow-sm sm:p-6">
       <div className="flex items-start justify-between gap-2">
-        <h2 className="text-lg font-semibold text-slate-900">{reading.meterName}</h2>
+        <h2 className="text-lg font-semibold text-ink">{reading.meterName}</h2>
         <Chip
           tone={allUnavailable ? "warn" : partialUnavailable ? "warn" : "live"}
           label={allUnavailable ? "no data" : partialUnavailable ? "partial" : "live"}
@@ -82,44 +82,44 @@ export function MeterCard({
 
       <div className="mt-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm text-slate-500">Power now</p>
+          <p className="text-sm text-ink-muted">Power now</p>
           <Chip
             tone={powerUnavailable ? "warn" : "live"}
             label={powerUnavailable ? "unavailable" : "live"}
           />
         </div>
         {power ? (
-          <p className="mt-1 text-4xl font-semibold tabular-nums text-slate-900">
+          <p className="mt-1 text-4xl font-semibold tabular-nums text-ink">
             {power.value}{" "}
-            <span className="text-2xl font-medium text-slate-500">{power.unit}</span>
+            <span className="text-2xl font-medium text-ink-muted">{power.unit}</span>
           </p>
         ) : (
-          <p className="mt-1 text-4xl font-semibold text-slate-300" aria-label="no data">
+          <p className="mt-1 text-4xl font-semibold text-ink-faint" aria-label="no data">
             —
           </p>
         )}
-        <p className="mt-1 truncate text-xs text-slate-400">
+        <p className="mt-1 truncate text-xs text-ink-soft">
           {reading.power.friendlyName ?? reading.power.entityId}
           {" · "}
           <RelativeTime iso={reading.power.lastUpdated} nowMs={nowMs} />
         </p>
       </div>
 
-      <div className="mt-4 border-t border-slate-100 pt-4">
+      <div className="mt-4 border-t border-line pt-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm text-slate-500">Total consumed</p>
+          <p className="text-sm text-ink-muted">Total consumed</p>
           <Chip tone={energyChip.tone} label={energyChip.label} />
         </div>
         {kwh ? (
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
-            {kwh} <span className="text-lg font-medium text-slate-500">kWh</span>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">
+            {kwh} <span className="text-lg font-medium text-ink-muted">kWh</span>
           </p>
         ) : (
-          <p className="mt-1 text-2xl font-semibold text-slate-300" aria-label="no data">
+          <p className="mt-1 text-2xl font-semibold text-ink-faint" aria-label="no data">
             —
           </p>
         )}
-        <p className="mt-1 truncate text-xs text-slate-400">
+        <p className="mt-1 truncate text-xs text-ink-soft">
           {reading.assignmentStartedAt
             ? `Since ${new Date(reading.assignmentStartedAt).toLocaleDateString()}`
             : "Not assigned to an owner"}
@@ -132,7 +132,7 @@ export function MeterCard({
         </p>
       </div>
 
-      <p className="mt-3 text-xs text-slate-400">
+      <p className="mt-3 text-xs text-ink-soft">
         Sensor update: <RelativeTime iso={lastSensorUpdate} nowMs={nowMs} />
       </p>
     </section>
