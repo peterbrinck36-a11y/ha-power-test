@@ -42,6 +42,20 @@ test.beforeAll(() => {
     powerEntityId: "sensor.shore_power_boat13_power", // unavailable in mock
     energyEntityId: "sensor.shore_power_boat13_energy",
   });
+
+  seedUser({
+    email: "wh-owner@marina.test",
+    username: "whskipper",
+    password: "wh-pass-123",
+    role: "owner",
+  });
+  seedMeter({
+    name: "Boat #15 — Slip D",
+    ownerUsername: "whskipper",
+    powerEntityId: "sensor.shore_power_boat15_power",
+    energyEntityId: "sensor.shore_power_boat15_energy", // reports Wh in the mock
+    kwhOffset: 0.678,
+  });
 });
 
 async function openDashboard(page: import("@playwright/test").Page) {
@@ -99,4 +113,19 @@ test("user without meters sees the empty state", async ({ page }) => {
 
   await expect(page.getByText("No meters assigned yet")).toBeVisible();
   await expect(page.getByText("Contact the marina admin")).toBeVisible();
+});
+
+test("Wh energy sensor is normalized to kWh before the offset", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Email or username").fill("whskipper");
+  await page.getByLabel("Password").fill("wh-pass-123");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await openDashboard(page);
+
+  const card15 = page.getByRole("region").filter({ hasText: "Boat #15 — Slip D" });
+  await expect(card15).toBeVisible();
+  // 45678 Wh → 45.678 kWh − 0.678 offset (not 45678 − 0.678 = 45677.32)
+  await expect(card15).toContainText("45.00 kWh");
+  await expect(card15).toContainText("1.45 kW");
 });

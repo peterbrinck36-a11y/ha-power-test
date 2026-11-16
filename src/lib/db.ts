@@ -12,9 +12,33 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import * as schema from "./schema";
 
 const dbPath = path.resolve(/* turbopackIgnore: true */ process.env.DATABASE_PATH ?? "./data/marina.db");
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-export const sqlite = new Database(dbPath);
+function describeOpenError(err: unknown): string {
+  const uid = typeof process.getuid === "function" ? `uid ${process.getuid()}` : "the container user";
+  return (
+    `[db] Cannot open SQLite database at ${dbPath}: ` +
+    `${err instanceof Error ? err.message : String(err)}. ` +
+    `In Docker, /app/data is a bind mount — make sure the HOST directory exists and is ` +
+    `writable by ${uid} (the container's non-root user), e.g. on the host: ` +
+    `mkdir -p <data-dir> && chown -R 1000:1000 <data-dir>.`
+  );
+}
+
+try {
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+} catch (err) {
+  throw new Error(describeOpenError(err));
+}
+
+function createSqlite(): Database.Database {
+  try {
+    return new Database(dbPath);
+  } catch (err) {
+    throw new Error(describeOpenError(err));
+  }
+}
+
+export const sqlite = createSqlite();
 sqlite.pragma("journal_mode = WAL");
 sqlite.pragma("foreign_keys = ON");
 sqlite.pragma("busy_timeout = 5000");

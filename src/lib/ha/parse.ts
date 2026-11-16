@@ -44,6 +44,21 @@ export function toWatts(value: number, unit: string | null): number {
   return unit?.toLowerCase() === "kw" ? value * 1000 : value;
 }
 
+/**
+ * Normalize an energy reading to kWh. HA energy sensors commonly report Wh or
+ * kWh (occasionally MWh); anything unrecognised is assumed to already be kWh.
+ */
+export function toKwh(value: number, unit: string | null): number {
+  switch (unit?.trim().toLowerCase()) {
+    case "wh":
+      return value / 1000;
+    case "mwh":
+      return value * 1000;
+    default:
+      return value;
+  }
+}
+
 /** Apply the tenant offset and clamp — never show negative consumption. */
 export function clampOffsetTotal(kwh: number, offset: number): number {
   return Math.max(0, kwh - offset);

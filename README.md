@@ -69,6 +69,8 @@ JSON file instead of calling Home Assistant. Ideal for demos and tests.
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | first boot | Seeds the initial admin when none exists |
 | `SESSION_SECRET` | **yes in prod** | HS256 signing secret — generate with `openssl rand -base64 48` |
 | `COOKIE_SECURE` | no | `auto` (default): secure when `x-forwarded-proto` is https · `true` · `false` |
+| `MAX_LOGIN_ATTEMPTS` | no | Failed logins allowed per client IP per 15 min (default 10) |
+| `TRUSTED_PROXY_HOPS` | no | Reverse proxies appending to `X-Forwarded-For` (default 1). Client IP for rate limiting = that many entries from the right; `0` = no proxy, ignore the header |
 
 ## Production deployment (GHCR + Dockge)
 

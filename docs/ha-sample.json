@@ -106,5 +106,31 @@
       "parent_id": null,
       "user_id": null
     }
+  },
+  {
+    "entity_id": "sensor.shore_power_boat15_power",
+    "state": "1450",
+    "attributes": {
+      "state_class": "measurement",
+      "unit_of_measurement": "W",
+      "device_class": "power",
+      "friendly_name": "Shore Power Boat 15 Power"
+    },
+    "last_changed": "2026-11-15T20:30:49.604105+00:00",
+    "last_reported": "2026-11-15T20:30:49.604105+00:00",
+    "last_updated": "2026-11-15T20:30:49.604105+00:00"
+  },
+  {
+    "entity_id": "sensor.shore_power_boat15_energy",
+    "state": "45678",
+    "attributes": {
+      "state_class": "total_increasing",
+      "unit_of_measurement": "Wh",
+      "device_class": "energy",
+      "friendly_name": "Shore Power Boat 15 Energy (Wh)"
+    },
+    "last_changed": "2026-11-15T20:30:46.559255+00:00",
+    "last_reported": "2026-11-15T20:30:46.559255+00:00",
+    "last_updated": "2026-11-15T20:30:46.559255+00:00"
   }
 ]

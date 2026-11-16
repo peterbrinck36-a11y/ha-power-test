@@ -45,6 +45,7 @@ Running the production build locally: `node .next/standalone/server.js` from
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | first boot | Seeds the initial admin when no admin exists (atomic insert, race-safe) |
 | `SESSION_SECRET` | **yes in prod** | HS256 key; dev falls back to per-boot random (sessions reset on restart) |
 | `COOKIE_SECURE` | no | `auto` (default: secure only when `x-forwarded-proto` is https) / `true` / `false` |
+| `TRUSTED_PROXY_HOPS` | no | default 1; rate-limit IP = Nth entry from the RIGHT of `X-Forwarded-For` (left part is client-forgeable); `0` = ignore header |
 
 Copy `.env.example` → `.env` for local development; never commit `.env` or `data/`.
 
@@ -68,6 +69,8 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   APIs = route handlers under `src/app/api/*`.
 - One login field matches email **or** username (both stored, both unique,
   case-insensitive match at login).
+- Energy sensors may report Wh, kWh or MWh — `toKwh` in `src/lib/ha/parse.ts`
+  normalizes to kWh **before** the offset is applied. Power is normalized to W.
 - `kwh_offset` is subtracted from the meter total and **clamped at 0** — never show
   negative consumption. In practice each user has exactly one meter, but the data
   model allows several (`meters.owner_id` nullable FK).
@@ -125,6 +128,12 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
 - **Docker build context excludes `e2e/`** — so `next build`'s project-wide
   type check must never reference test files: `tsconfig.json` excludes
   `e2e`, `playwright.config.ts`, and `scripts`. Keep app/test type worlds apart.
+- **Bind-mount volume ownership**: the container runs as non-root `node`
+  (uid 1000). The Dockerfile's `chown node:node /app/data` only affects the
+  image's own mountpoint — a host bind mount **replaces** it with the host
+  directory's ownership, so the host data dir must be `chown 1000:1000`'d
+  (SQLITE_CANTOPEN otherwise). `src/lib/db.ts` wraps open errors with the fix
+  in the message.
 - **Playwright webServer teardown hangs on Windows** with the Next.js standalone
   server (its worker child inherits the stdio pipes). This repo instead spawns
   the server in `e2e/global-setup.ts` and kills the process tree with
