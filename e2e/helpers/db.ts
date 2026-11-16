@@ -16,11 +16,26 @@ export type SeedMeter = {
   ownerUsername?: string | null;
   powerEntityId: string;
   energyEntityId: string;
-  kwhOffset?: number;
+};
+
+export type SeedAssignment = {
+  meterName: string;
+  ownerUsername?: string | null;
+  /** Total already accumulated for this assignment (our DB is the source of truth). */
+  consumedKwh?: number;
+  startedAt?: number;
 };
 
 function open(): Database.Database {
   return new Database(e2eDbPath);
+}
+
+function meterIdByName(db: Database.Database, meterName: string): number {
+  const row = db.prepare("SELECT id FROM meters WHERE name = ?").get(meterName) as
+    | { id: number }
+    | undefined;
+  if (!row) throw new Error(`seed: meter "${meterName}" not found`);
+  return row.id;
 }
 
 /** Direct DB seeding — the server has already migrated this DB at boot. Idempotent. */
@@ -68,17 +83,73 @@ export function seedMeter(meter: SeedMeter): number {
     }
     const info = db
       .prepare(
-        `INSERT INTO meters (name, owner_id, power_entity_id, energy_entity_id, kwh_offset)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO meters (name, owner_id, power_entity_id, energy_entity_id)
+         VALUES (?, ?, ?, ?)`,
       )
-      .run(
-        meter.name,
-        ownerId,
-        meter.powerEntityId,
-        meter.energyEntityId,
-        meter.kwhOffset ?? 0,
-      );
+      .run(meter.name, ownerId, meter.powerEntityId, meter.energyEntityId);
     return Number(info.lastInsertRowid);
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Replaces the meter's ownership periods with a single open one, so tests can
+ * assert a known DB-owned total without running the sampler.
+ */
+export function seedAssignment(assignment: SeedAssignment): void {
+  const db = open();
+  try {
+    const meterId = meterIdByName(db, assignment.meterName);
+
+    let ownerId: number | null = null;
+    if (assignment.ownerUsername) {
+      const row = db
+        .prepare("SELECT id FROM users WHERE username = ?")
+        .get(assignment.ownerUsername) as { id: number } | undefined;
+      if (!row) throw new Error(`seedAssignment: user ${assignment.ownerUsername} not found`);
+      ownerId = row.id;
+    }
+
+    db.prepare("DELETE FROM meter_assignments WHERE meter_id = ?").run(meterId);
+    db.prepare(
+      `INSERT INTO meter_assignments (meter_id, owner_id, started_at, ended_at, consumed_kwh)
+       VALUES (?, ?, ?, NULL, ?)`,
+    ).run(meterId, ownerId, assignment.startedAt ?? Date.now(), assignment.consumedKwh ?? 0);
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Pre-seeds the sampler's stored counter so the next sampling pass produces a
+ * deterministic delta (0 = "never sampled", so the first pass only baselines).
+ */
+export function seedMeterState(meterName: string, lastEnergyKwh: number | null): void {
+  const db = open();
+  try {
+    const meterId = meterIdByName(db, meterName);
+    db.prepare(
+      `INSERT INTO meter_state (meter_id, last_energy_kwh, last_energy_available, last_sampled_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(meter_id) DO UPDATE SET
+         last_energy_kwh = excluded.last_energy_kwh,
+         last_energy_available = excluded.last_energy_available,
+         last_sampled_at = excluded.last_sampled_at`,
+    ).run(meterId, lastEnergyKwh, lastEnergyKwh === null ? 0 : 1, Date.now());
+  } finally {
+    db.close();
+  }
+}
+
+export function countReadings(meterName: string): number {
+  const db = open();
+  try {
+    const meterId = meterIdByName(db, meterName);
+    const row = db
+      .prepare("SELECT count(*) AS n FROM readings WHERE meter_id = ?")
+      .get(meterId) as { n: number };
+    return row.n;
   } finally {
     db.close();
   }

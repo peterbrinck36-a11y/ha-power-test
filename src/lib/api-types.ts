@@ -20,21 +20,25 @@ export type EntityReading = {
 };
 
 export type PowerReading = EntityReading & {
-  /** Live power normalized to watts. */
+  /** Live power normalized to watts, straight from Home Assistant. */
   watts: number | null;
 };
 
 export type EnergyReading = EntityReading & {
-  /** Raw total from the meter, normalized to kWh (Wh/MWh sensors converted). */
+  /**
+   * kWh accumulated in our own database since the current owner was assigned
+   * (null while the meter is unassigned). This is NOT the HA lifetime counter.
+   */
   kwhTotal: number | null;
-  /** `kwhTotal − kwhOffset`, clamped at 0 — what the boat owner sees. */
-  kwhAdjusted: number | null;
+  /** When the background sampler last recorded this meter. */
+  sampledAt: string | null;
 };
 
 export type MeterReading = {
   meterId: number;
   meterName: string;
-  kwhOffset: number;
+  /** Start of the current ownership period — the consumption baseline. */
+  assignmentStartedAt: string | null;
   power: PowerReading;
   energy: EnergyReading;
 };

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { seedMeter, seedUser } from "./helpers/db";
+import { seedAssignment, seedMeter, seedUser } from "./helpers/db";
 import { adminEmail, adminPassword } from "./helpers/env";
 import { signOut } from "./helpers/ui";
 
@@ -16,6 +16,20 @@ test.beforeAll(() => {
     ownerUsername: "uiskipper",
     powerEntityId: "sensor.stue_lampe_stue_power",
     energyEntityId: "sensor.stue_lampe_stue_energy",
+  });
+  seedAssignment({ meterName: "Boat #12 — Slip A", ownerUsername: "uiskipper", consumedKwh: 42.5 });
+
+  // Seeded only so the reassignment reset can be asserted below.
+  seedMeter({
+    name: "Reset Boat — Slip R",
+    ownerUsername: "uiskipper",
+    powerEntityId: "sensor.stue_lampe_stue_power",
+    energyEntityId: "sensor.stue_lampe_stue_energy",
+  });
+  seedAssignment({
+    meterName: "Reset Boat — Slip R",
+    ownerUsername: "uiskipper",
+    consumedKwh: 42.5,
   });
 });
 
@@ -91,7 +105,7 @@ test("admin password reset invalidates the old password", async ({ page }) => {
   await signOut(page);
 });
 
-test("admin creates a meter via the sensor picker; owner sees it on the dashboard", async ({ page }) => {
+test("admin creates a meter via the sensor picker; the owner starts at 0 kWh", async ({ page }) => {
   await adminLogin(page);
   await page.getByRole("link", { name: "Meters" }).click();
 
@@ -118,14 +132,14 @@ test("admin creates a meter via the sensor picker; owner sees it on the dashboar
     "sensor.stue_lampe_stue_energy",
   );
 
-  await dialog.locator("#meter-offset").fill("1.5");
   await dialog.getByRole("button", { name: "Create meter" }).click();
   await expect(dialog).toBeHidden();
 
   const meterRow = page.getByRole("row").filter({ hasText: "E2E Boat 99" });
   await expect(meterRow).toBeVisible();
+  await expect(meterRow).toContainText("0.00 kWh"); // fresh assignment
 
-  // The assigned owner now sees the meter with offset-adjusted values.
+  // The assigned owner sees live power and a 0 total until the sampler runs.
   await signOut(page);
   await page.goto("/login");
   await page.getByLabel("Email or username").fill("newskipper");
@@ -135,8 +149,8 @@ test("admin creates a meter via the sensor picker; owner sees it on the dashboar
 
   const card = page.getByRole("region").filter({ hasText: "E2E Boat 99" });
   await expect(card).toContainText("302.6 W");
-  await expect(card).toContainText("193.74 kWh"); // 195.239 − 1.5, clamped
-  await expect(card).toContainText("offset −1.5 kWh");
+  await expect(card).toContainText("0.00 kWh");
+  await expect(card).toContainText("waiting for sample");
   await signOut(page);
 });
 
@@ -152,6 +166,40 @@ test("admin cannot disable their own account", async ({ page }) => {
   );
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog).toBeHidden();
+});
+
+test("reassigning a meter resets the new owner's total to 0", async ({ page }) => {
+  await adminLogin(page);
+  await page.getByRole("link", { name: "Meters" }).click();
+
+  const row = page.getByRole("row").filter({ hasText: "Reset Boat" });
+  await expect(row).toContainText("42.50 kWh");
+  await row.getByRole("button", { name: "Edit" }).click();
+
+  const dialog = page.getByRole("dialog");
+  const nextOwner = await dialog
+    .locator("#meter-owner option")
+    .filter({ hasText: "newskipper" })
+    .getAttribute("value");
+  await dialog.locator("#meter-owner").selectOption(nextOwner ?? "");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).toBeHidden();
+
+  // The meter now belongs to newskipper and its period restarted at 0.
+  await expect(
+    page.getByRole("row").filter({ hasText: "Reset Boat" }),
+  ).toContainText("0.00 kWh");
+
+  await signOut(page);
+  await page.goto("/login");
+  await page.getByLabel("Email or username").fill("newskipper");
+  await page.getByLabel("Password").fill("reset-pass-456");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  const card = page.getByRole("region").filter({ hasText: "Reset Boat" });
+  await expect(card).toContainText("0.00 kWh");
+  await signOut(page);
 });
 
 test("admin disables a user; login is blocked", async ({ page }) => {

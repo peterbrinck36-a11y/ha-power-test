@@ -2,18 +2,24 @@
 
 Self-hosted web application for marinas: boat owners log in and monitor their
 shore-power usage from Home Assistant, while an admin manages user accounts and
-assigns Home Assistant power meters to them.
+assigns Home Assistant power meters to them. Power is live from HA; consumption
+totals are sampled into the app's own database every 2 minutes, so each owner's
+total starts at 0 when their meter is assigned and monthly reports are possible.
 
 ## Features
 
 - **Boat owner dashboard** — live power draw (W, auto-formats to kW), total
-  consumed energy (offset-adjusted), sensor-age timestamps, and clear fallback
-  indicators when a sensor is `unavailable`/`unknown` or Home Assistant is
-  unreachable. Auto-refreshes every 10s without page flicker; pauses while the
-  tab is hidden.
+  consumed energy accumulated in our own database since the owner was assigned,
+  sensor-age timestamps, and clear fallback indicators when a sensor is
+  `unavailable`/`unknown` or a sample is stale. Auto-refreshes every 10s without
+  page flicker; pauses while the tab is hidden.
+- **Background sampler** — every 2 minutes the server reads all meters and appends
+  a reading (power, energy, kWh delta) to SQLite. Runs whether or not anyone is
+  signed in; gaps recover from the HA counter on the next good sample.
 - **Admin panel** — create/edit/disable/delete boat owners (including direct
-  password resets), create/edit/delete meters, assign them to owners, and set a
-  `kwh_offset` to zero the total for a new tenant without touching hardware.
+  password resets), create/edit/delete meters and assign them to owners.
+  Assigning a meter to a different owner automatically restarts that owner's
+  consumption at 0; editing the same owner's meter keeps the running total.
 - **Home Assistant sensor picker** — searchable dropdown fed by a filtered
   `/api/states` query (power/energy device classes, W/kW/Wh/kWh units), with
   manual `entity_id` entry as a fallback.
@@ -29,7 +35,6 @@ assigns Home Assistant power meters to them.
 Next.js 16 (App Router, standalone output) · TypeScript · Tailwind CSS v4 ·
 SQLite (better-sqlite3, WAL) + Drizzle ORM · bcryptjs + jose · Playwright ·
 Docker (node:22-slim) → GHCR → Dockge on TrueNAS SCALE behind an HTTPS proxy.
-
 ## Quick start (local development)
 
 ```bash
@@ -56,7 +61,8 @@ JSON file instead of calling Home Assistant. Ideal for demos and tests.
 2. Put your HA base URL in `HA_URL` (e.g. `http://homeassistant.local:8123`)
    and the token in `HA_TOKEN`.
 3. In the app: sign in as admin → **Meters → New meter** → pick a power sensor
-   (W/kW) and an energy sensor (kWh) → assign an owner.
+   (W/kW) and an energy sensor (Wh/kWh) → assign an owner. The owner's total
+   starts at 0 and grows as the sampler records consumption.
 
 ## Environment variables
 
@@ -71,6 +77,8 @@ JSON file instead of calling Home Assistant. Ideal for demos and tests.
 | `COOKIE_SECURE` | no | `auto` (default): secure when `x-forwarded-proto` is https · `true` · `false` |
 | `MAX_LOGIN_ATTEMPTS` | no | Failed logins allowed per client IP per 15 min (default 10) |
 | `TRUSTED_PROXY_HOPS` | no | Reverse proxies appending to `X-Forwarded-For` (default 1). Client IP for rate limiting = that many entries from the right; `0` = no proxy, ignore the header |
+| `SAMPLE_INTERVAL_MS` | no | sampler cadence in ms (default `120000` = 2 min, clamped to ≥5s) |
+| `SAMPLER_DISABLED` | no | `1` turns the background loop off (tests use this; `POST /api/admin/sample` still works) |
 
 ## Production deployment (GHCR + Dockge)
 
@@ -104,7 +112,10 @@ npm run test:e2e     # Playwright (offline via HA_MOCK_FILE, throwaway DB)
 
 ```
 src/proxy.ts            Next 16 middleware (session redirects, JWT-only checks)
+src/instrumentation.ts  boots the background sampler once per server process
 src/app/                routes: login, dashboard, admin/*, api/*
+src/lib/sampler.ts      always-on 2-minute sampling pass (readings + deltas)
+src/lib/meters.ts       ownership periods / automatic consumption reset
 src/lib/ha/             server-only HA client (cache, parsers, mock support)
 src/lib/                db, schema, auth, formatters, shared API types
 src/components/         dashboard + admin UI components

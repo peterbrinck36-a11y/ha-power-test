@@ -6,7 +6,8 @@ Guidance for AI coding agents (and humans) working in this repository.
 
 Self-hosted web app (single Docker container) that lets marina boat owners log in and
 monitor shore-power usage from Home Assistant. Admins manage user accounts and assign
-HA power/energy meters (with `kwh_offset` support) to boat owners.
+HA power/energy meters to boat owners. Power is live from HA; consumption totals are
+sampled and stored by the app itself so monthly per-user reports are possible.
 
 ## Stack (locked — do not swap without discussing)
 
@@ -15,6 +16,10 @@ HA power/energy meters (with `kwh_offset` support) to boat owners.
 - **SQLite** via `better-sqlite3` (WAL mode) + **Drizzle ORM**; DB file at `DATABASE_PATH`
   (default `./data/marina.db`, `/app/data/marina.db` in Docker). Migrations apply
   automatically at startup (`src/lib/db.ts`), SQL lives in `drizzle/`
+- **App-owned history**: an in-process sampler (`src/lib/sampler.ts`, started once from
+  `src/instrumentation.ts`) reads every meter's power + energy sensors every 2 minutes and
+  appends to `readings`; `meter_assignments.consumed_kwh` is the owner-facing total.
+  Always-on, independent of user sessions.
 - **Auth**: `bcryptjs` password hashing, `jose` HS256 JWT in an HTTP-only cookie
   (`marina_session`), routes guarded by `src/proxy.ts` (Next 16's replacement for
   `middleware.ts`) **plus** per-page/route/action `requireUser`/`requireAdmin`
@@ -46,6 +51,8 @@ Running the production build locally: `node .next/standalone/server.js` from
 | `SESSION_SECRET` | **yes in prod** | HS256 key; dev falls back to per-boot random (sessions reset on restart) |
 | `COOKIE_SECURE` | no | `auto` (default: secure only when `x-forwarded-proto` is https) / `true` / `false` |
 | `TRUSTED_PROXY_HOPS` | no | default 1; rate-limit IP = Nth entry from the RIGHT of `X-Forwarded-For` (left part is client-forgeable); `0` = ignore header |
+| `SAMPLE_INTERVAL_MS` | no | sampler cadence, default `120000` (2 min), clamped to ≥5s |
+| `SAMPLER_DISABLED` | no | `1` disables the background loop (E2E uses this; the manual endpoint still works) |
 
 Copy `.env.example` → `.env` for local development; never commit `.env` or `data/`.
 
@@ -62,6 +69,9 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
 4. Schema changes: edit `src/lib/schema.ts` → `npm run db:generate` → commit the new
    `drizzle/` migration. Do not hand-edit generated SQL.
 5. Never commit `.env`, `data/`, or real tokens. `docs/ha-sample.json` is mock data only.
+6. Owner-facing totals come from our DB (`meter_assignments`), never from the HA energy
+   counter. Only `src/lib/sampler.ts` writes `readings` / `meter_state`; assignment
+   changes go through `syncAssignment` in `src/lib/meters.ts`.
 
 ## Conventions
 
@@ -70,10 +80,15 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
 - One login field matches email **or** username (both stored, both unique,
   case-insensitive match at login).
 - Energy sensors may report Wh, kWh or MWh — `toKwh` in `src/lib/ha/parse.ts`
-  normalizes to kWh **before** the offset is applied. Power is normalized to W.
-- `kwh_offset` is subtracted from the meter total and **clamped at 0** — never show
-  negative consumption. In practice each user has exactly one meter, but the data
-  model allows several (`meters.owner_id` nullable FK).
+  normalizes to kWh **before** the delta is taken. Power is normalized to W.
+- Consumption is stored in our DB per ownership period: `meter_assignments` holds
+  `started_at`, `ended_at` and the accumulated `consumed_kwh`. Assigning a meter to a
+  different owner (or unassigning/reassigning) closes the period and opens a new one at
+  0 — this is the automatic reset. Editing the same owner's meter must not reset it.
+- Changing a meter's energy entity re-baselines the sampler (`resetEnergyBaseline`)
+  without discarding the running total.
+- In practice each user has exactly one meter, but the data model allows several
+  (`meters.owner_id` nullable FK).
 - UI: mobile-first Tailwind utilities; small hand-rolled components in `src/components`.
 - When `npm install` warns about blocked install scripts (npm ≥ 11.20), approve the
   native/native-adjacent packages: `npm install-scripts approve better-sqlite3 esbuild`
@@ -86,18 +101,24 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
 - [x] Phase 2 — HA proxy client (`src/lib/ha/*`: 5s TTL cache + single-flight +
   `HA_MOCK_FILE` + BOM-tolerant parsing), `/api/ha/readings` (owner-scoped, admins
   see all), `/api/admin/ha-sensors` (admin-only picker feed), admin users CRUD +
-  password reset (self/last-admin guards), meters CRUD + assignment + `kwh_offset`,
+  password reset (self/last-admin guards), meters CRUD + assignment,
   searchable SensorPicker with manual fallback, dialogs
 - [x] Phase 3 — boat owner dashboard (`/dashboard`): mobile-first MeterCard UI,
   10s polling with pause-when-hidden + refresh-on-visible, kW auto-formatting,
-  offset-adjusted totals, live/partial/no-data/unavailable chips, "refreshed Xs
+  DB-owned totals, live/partial/no-data/unavailable chips, "refreshed Xs
   ago" ticker, degraded-HA + fetch-error banners, empty state, admin "Owner view"
   link; relative-time + number formatters in `src/lib/format.ts`
 - [x] Phase 4 — Dockerfile (node:22-slim multi-stage, standalone runner, non-root,
   HEALTHCHECK via node fetch), .dockerignore, compose.yaml (./data volume),
   GHCR workflow (E2E job gates the amd64+arm64 build-push), README, Playwright
-  suite (17 specs: auth, dashboard scenarios, admin UI flows incl. sensor
-  picker + password reset + disable, API auth boundaries) — all passing
+  suite (auth, dashboard scenarios, admin UI flows incl. sensor picker + password
+  reset + disable, API auth boundaries, sampler) — all passing
+- [x] Phase 5 — app-owned consumption history: `readings` + `meter_assignments` +
+  `meter_state`, 2-minute always-on sampler (`src/instrumentation.ts`), owner totals
+  from `consumed_kwh` since assignment (HA `kwh_offset` retired), automatic reset on
+  reassignment, `POST /api/admin/sample` manual pass
+- [ ] Phase 6 — monthly consumption reports per user (query model already supports it:
+  `SUM(readings.delta_kwh)` grouped by month and assignment window)
 
 ## Gotchas learned the hard way
 
@@ -113,12 +134,24 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
 - **Locale-dependent `type="number"` inputs silently block form submission** on
   comma-decimal locales ("5.239" fails `step="0.01"` with "5,23/5,24" as nearest
   valid values, no visible error). Use `type="text"` + `inputMode="decimal"` and
-  validate server-side (see the kWh offset field).
+  validate server-side (the kWh offset field is gone, but keep the pattern for any
+  future decimal input).
 - **HA exports often start with a UTF-8 BOM** — strip it before `JSON.parse`
   (see `readMockFile` in `src/lib/ha/client.ts`).
 - **`next build` wipes `.next/standalone/data`** — that throwaway DB is rebuilt
   with a fresh seed on every rebuild locally. In Docker the DB lives on the
   mounted volume (`/app/data`), so this only affects local standalone testing.
+- **Sampler lifecycle**: it starts from `src/instrumentation.ts` (bundled into the
+  standalone output), never from `db.ts` — otherwise `next build`'s parallel workers
+  would spawn timers. A `globalThis` singleton prevents double loops on dev reloads.
+- **One replica only**: the sampler is an in-process timer. Two containers against one
+  DB would double-sample (totals stay assignment-scoped, but rows/deltas duplicate).
+- **Sampling gaps recover**: deltas are measured against the last stored counter, so
+  container downtime is credited on the next good sample. Negative deltas (counter
+  reset) are ignored, never counted.
+- **E2E sampling**: the suite sets `SAMPLER_DISABLED=1` and triggers passes explicitly
+  via `POST /api/admin/sample`; seed assignments / `meter_state` directly through
+  `e2e/helpers/db.ts` so totals are deterministic.
 - **After rebuilding, hard-reload browser tabs** — the old Next.js client runtime
   keeps running across soft navigations, and React handlers from it stop
   responding (clicks silently do nothing) until a full reload.

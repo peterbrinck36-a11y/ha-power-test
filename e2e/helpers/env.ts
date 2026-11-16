@@ -36,4 +36,7 @@ export const serverEnv: Record<string, string> = {
   COOKIE_SECURE: "auto",
   // The whole suite logs in many times from one IP — relax the limiter.
   MAX_LOGIN_ATTEMPTS: "1000",
+  // The background sampler is triggered explicitly per test (POST
+  // /api/admin/sample) so assertions are deterministic.
+  SAMPLER_DISABLED: "1",
 };

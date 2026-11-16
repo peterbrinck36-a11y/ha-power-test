@@ -4,13 +4,13 @@ import type { HaState } from "./types";
 
 const UNAVAILABLE_STATES = new Set(["unavailable", "unknown"]);
 
-export function friendlyName(state: HaState): string | null {
-  const name = state.attributes?.friendly_name;
+export function friendlyName(state: HaState | null | undefined): string | null {
+  const name = state?.attributes?.friendly_name;
   return typeof name === "string" && name.trim().length > 0 ? name : null;
 }
 
-export function unitOf(state: HaState): string | null {
-  const unit = state.attributes?.unit_of_measurement;
+export function unitOf(state: HaState | null | undefined): string | null {
+  const unit = state?.attributes?.unit_of_measurement;
   return typeof unit === "string" && unit.length > 0 ? unit : null;
 }
 
@@ -59,7 +59,4 @@ export function toKwh(value: number, unit: string | null): number {
   }
 }
 
-/** Apply the tenant offset and clamp — never show negative consumption. */
-export function clampOffsetTotal(kwh: number, offset: number): number {
-  return Math.max(0, kwh - offset);
-}
+

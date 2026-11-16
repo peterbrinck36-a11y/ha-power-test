@@ -51,6 +51,30 @@ export const db = drizzle(sqlite, { schema });
 migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
 
 /**
+ * Ensures every meter that already has an owner has an open assignment period.
+ * This is what "everyone starts at 0" means on the first boot after the
+ * app-owned-history migration: existing meters get a fresh period at
+ * `consumed_kwh = 0`, and the sampler starts counting from there.
+ *
+ * Atomic "insert if none open" — safe with parallel build workers and multiple
+ * processes (the partial unique index is the final backstop).
+ */
+function backfillOpenAssignments(): void {
+  db.run(sql`
+    insert into meter_assignments (meter_id, owner_id, started_at, ended_at, consumed_kwh)
+    select m.id, m.owner_id, unixepoch() * 1000, null, 0
+    from meters m
+    where m.owner_id is not null
+      and not exists (
+        select 1 from meter_assignments a
+        where a.meter_id = m.id and a.ended_at is null
+      )
+  `);
+}
+
+backfillOpenAssignments();
+
+/**
  * Seeds the initial admin from ADMIN_EMAIL / ADMIN_PASSWORD when no admin
  * exists yet. Runs once at module init (first db import of the process).
  */

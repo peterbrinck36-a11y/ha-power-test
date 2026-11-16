@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { meters, users } from "@/lib/schema";
+import { meterAssignments, meters, users } from "@/lib/schema";
 import { MeterRowActions, NewMeterButton } from "@/components/admin/meter-dialogs";
 
 export default async function AdminMetersPage() {
@@ -12,12 +12,21 @@ export default async function AdminMetersPage() {
       ownerId: meters.ownerId,
       powerEntityId: meters.powerEntityId,
       energyEntityId: meters.energyEntityId,
-      kwhOffset: meters.kwhOffset,
       ownerUsername: users.username,
     })
     .from(meters)
     .leftJoin(users, eq(meters.ownerId, users.id))
     .all();
+
+  // Open ownership periods carry the DB-owned total shown to the owner.
+  const openAssignments = db
+    .select()
+    .from(meterAssignments)
+    .where(isNull(meterAssignments.endedAt))
+    .all();
+  const assignmentByMeter = new Map(
+    openAssignments.map((assignment) => [assignment.meterId, assignment] as const),
+  );
 
   const owners = db
     .select({
@@ -45,44 +54,50 @@ export default async function AdminMetersPage() {
               <th className="px-4 py-3">Owner</th>
               <th className="px-4 py-3">Power sensor</th>
               <th className="px-4 py-3">Energy sensor</th>
-              <th className="px-4 py-3">kWh offset</th>
+              <th className="px-4 py-3">Assigned since</th>
+              <th className="px-4 py-3">Consumed</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {meterRows.map((row) => (
-              <tr key={row.id} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3 font-medium text-slate-900">{row.name}</td>
-                <td className="px-4 py-3 text-slate-600">
-                  {row.ownerUsername ?? <span className="text-slate-400">unassigned</span>}
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-600">
-                  {row.powerEntityId}
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-600">
-                  {row.energyEntityId}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {row.kwhOffset === 0 ? "—" : `${row.kwhOffset} kWh`}
-                </td>
-                <td className="px-4 py-3">
-                  <MeterRowActions
-                    meter={{
-                      id: row.id,
-                      name: row.name,
-                      ownerId: row.ownerId,
-                      powerEntityId: row.powerEntityId,
-                      energyEntityId: row.energyEntityId,
-                      kwhOffset: row.kwhOffset,
-                    }}
-                    owners={owners}
-                  />
-                </td>
-              </tr>
-            ))}
+            {meterRows.map((row) => {
+              const assignment = assignmentByMeter.get(row.id) ?? null;
+              return (
+                <tr key={row.id} className="border-b border-slate-100 last:border-0">
+                  <td className="px-4 py-3 font-medium text-slate-900">{row.name}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {row.ownerUsername ?? <span className="text-slate-400">unassigned</span>}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                    {row.powerEntityId}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                    {row.energyEntityId}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {assignment ? assignment.startedAt.toLocaleDateString() : "—"}
+                  </td>
+                  <td className="px-4 py-3 tabular-nums text-slate-600">
+                    {assignment ? `${assignment.consumedKwh.toFixed(2)} kWh` : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <MeterRowActions
+                      meter={{
+                        id: row.id,
+                        name: row.name,
+                        ownerId: row.ownerId,
+                        powerEntityId: row.powerEntityId,
+                        energyEntityId: row.energyEntityId,
+                      }}
+                      owners={owners}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
             {meterRows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
                   No meters yet — create one to get started.
                 </td>
               </tr>
@@ -93,7 +108,9 @@ export default async function AdminMetersPage() {
 
       <p className="text-xs text-slate-500">
         Sensors are picked from Home Assistant (power/energy entities). When HA is
-        unreachable you can still type an entity_id manually.
+        unreachable you can still type an entity_id manually. Consumption is stored in
+        this app and sampled every 2 minutes; assigning a meter to a different owner
+        starts their total at 0.
       </p>
     </div>
   );

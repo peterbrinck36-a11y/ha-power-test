@@ -13,7 +13,6 @@ export type MeterRow = {
   ownerId: number | null;
   powerEntityId: string;
   energyEntityId: string;
-  kwhOffset: number;
 };
 
 export type OwnerOption = {
@@ -102,6 +101,9 @@ function MeterDialog({
               </option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-slate-500">
+            Assigning a meter to a different owner starts their consumption at 0.
+          </p>
         </div>
 
         <SensorPicker
@@ -119,27 +121,6 @@ function MeterDialog({
           onChange={setEnergyEntity}
           required
         />
-
-        <div>
-          <label htmlFor="meter-offset" className="block text-sm font-medium text-slate-700">
-            kWh offset (zero the total for a new tenant)
-          </label>
-          {/* Text + inputMode avoids locale-dependent type=number step validation
-              (comma-decimal browsers would silently reject "5.239"). The server
-              validates the value and surfaces a clear error. */}
-          <input
-            id="meter-offset"
-            name="kwhOffset"
-            type="text"
-            inputMode="decimal"
-            placeholder="0"
-            defaultValue={meter?.kwhOffset === 0 ? "0" : String(meter?.kwhOffset ?? 0)}
-            className={inputClasses}
-          />
-          <p className="mt-1 text-xs text-slate-500">
-            Displayed total = meter reading − offset, never below 0.
-          </p>
-        </div>
 
         {state.error ? (
           <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

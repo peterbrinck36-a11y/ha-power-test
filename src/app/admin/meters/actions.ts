@@ -6,17 +6,11 @@ import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { type FormState } from "@/lib/forms";
+import { resetEnergyBaseline, syncAssignment } from "@/lib/meters";
 import { meters, users } from "@/lib/schema";
 
 function str(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
-}
-
-function parseOffset(raw: string): number | null {
-  if (raw === "") return 0;
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value < 0) return null;
-  return value;
 }
 
 function resolveOwner(raw: string): number | null {
@@ -29,13 +23,17 @@ function validateMeterFields(
   name: string,
   powerEntityId: string,
   energyEntityId: string,
-  offset: number | null,
 ): string | null {
   if (!name) return "Enter a name / slip label.";
   if (!powerEntityId) return "Choose or enter a power sensor entity_id.";
   if (!energyEntityId) return "Choose or enter an energy sensor entity_id.";
-  if (offset === null) return "kWh offset must be a number ≥ 0.";
   return null;
+}
+
+function ownerExists(ownerId: number): boolean {
+  return (
+    db.select({ id: users.id }).from(users).where(eq(users.id, ownerId)).all().length > 0
+  );
 }
 
 export async function createMeter(
@@ -48,28 +46,26 @@ export async function createMeter(
   const powerEntityId = str(formData, "powerEntityId");
   const energyEntityId = str(formData, "energyEntityId");
   const ownerId = resolveOwner(str(formData, "ownerId"));
-  const offset = parseOffset(str(formData, "kwhOffset"));
 
-  const invalid = validateMeterFields(name, powerEntityId, energyEntityId, offset);
+  const invalid = validateMeterFields(name, powerEntityId, energyEntityId);
   if (invalid) return { error: invalid, ok: false };
 
-  if (ownerId !== null) {
-    const owner = db.select({ id: users.id }).from(users).where(eq(users.id, ownerId)).all()[0];
-    if (!owner) return { error: "Selected owner no longer exists.", ok: false };
+  if (ownerId !== null && !ownerExists(ownerId)) {
+    return { error: "Selected owner no longer exists.", ok: false };
   }
 
-  db.insert(meters)
-    .values({
-      name,
-      powerEntityId,
-      energyEntityId,
-      ownerId,
-      kwhOffset: offset ?? 0,
-    })
-    .run();
+  const created = db
+    .insert(meters)
+    .values({ name, powerEntityId, energyEntityId, ownerId })
+    .returning({ id: meters.id })
+    .get();
+
+  // A new meter assigned right away starts its consumption at 0.
+  syncAssignment(created.id, ownerId);
 
   revalidatePath("/admin/meters");
   revalidatePath("/admin");
+  revalidatePath("/dashboard");
   return { error: null, ok: true };
 }
 
@@ -89,30 +85,29 @@ export async function updateMeter(
   const powerEntityId = str(formData, "powerEntityId");
   const energyEntityId = str(formData, "energyEntityId");
   const ownerId = resolveOwner(str(formData, "ownerId"));
-  const offset = parseOffset(str(formData, "kwhOffset"));
 
-  const invalid = validateMeterFields(name, powerEntityId, energyEntityId, offset);
+  const invalid = validateMeterFields(name, powerEntityId, energyEntityId);
   if (invalid) return { error: invalid, ok: false };
 
-  if (ownerId !== null) {
-    const owner = db.select({ id: users.id }).from(users).where(eq(users.id, ownerId)).all()[0];
-    if (!owner) return { error: "Selected owner no longer exists.", ok: false };
+  if (ownerId !== null && !ownerExists(ownerId)) {
+    return { error: "Selected owner no longer exists.", ok: false };
   }
 
   db.update(meters)
-    .set({
-      name,
-      powerEntityId,
-      energyEntityId,
-      ownerId,
-      kwhOffset: offset ?? 0,
-      updatedAt: new Date(),
-    })
+    .set({ name, powerEntityId, energyEntityId, ownerId, updatedAt: new Date() })
     .where(eq(meters.id, id))
     .run();
 
+  // Owner change = new ownership period at 0. Same owner = untouched total.
+  syncAssignment(id, ownerId);
+
+  // Pointing the meter at a different energy counter invalidates the stored
+  // baseline; the next sample starts a fresh one (the running total is kept).
+  if (existing.energyEntityId !== energyEntityId) resetEnergyBaseline(id);
+
   revalidatePath("/admin/meters");
   revalidatePath("/admin");
+  revalidatePath("/dashboard");
   return { error: null, ok: true };
 }
 
@@ -128,6 +123,7 @@ export async function deleteMeter(
   const existing = db.select().from(meters).where(eq(meters.id, id)).limit(1).all()[0];
   if (!existing) return { error: "Meter not found.", ok: false };
 
+  // Assignments, meter_state and readings cascade with the meter.
   db.delete(meters).where(eq(meters.id, id)).run();
 
   revalidatePath("/admin/meters");
