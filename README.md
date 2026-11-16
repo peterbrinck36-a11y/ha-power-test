@@ -20,6 +20,14 @@ total starts at 0 when their meter is assigned and monthly reports are possible.
   Gold 300); each owner sees their calendar-month total, current tier and how much
   is left to the next one. Computed from the sampler's stored readings, so it works
   even when Home Assistant is temporarily offline.
+- **Reports & CSV export** — an admin Reports tab pulls stored consumption for
+  one or more users over any date range (up to a year). Choose daily totals,
+  hourly totals or raw samples, see per-user totals and a table, then download
+  the same data as a CSV file (Excel-friendly).
+- **Debug tools** — an admin Debug tab rewrites stored history for testing: set
+  the kWh for any day of any meter, change when a meter was assigned and its
+  running total, take a sample on demand, reset the energy baseline, or clear a
+  meter's readings.
 - **Admin panel** — create/edit/disable/delete boat owners (including direct
   password resets), create/edit/delete meters and assign them to owners.
   Click a user to open their detail page and see every meter they own; create a
@@ -100,6 +108,36 @@ Details:
 - With no tiers configured the card is hidden; deleting tiers hides it again.
 - Admins previewing `/dashboard` do not get a category card (the total is
   account-level, so it has no meaning for the admin account).
+
+## Reports and CSV export
+
+Admin panel → **Reports**: tick one or more users, pick a **From**/**To** date range
+(inclusive, in `APP_TIMEZONE`) and a detail level:
+
+- **Daily totals** (default) — one row per user/meter/day, best for monthly overviews.
+- **Hourly totals** — one row per hour.
+- **Raw samples** — every stored sample, including power and energy readings.
+
+The table shows per-user totals plus the rows; **Export CSV** downloads the same
+report (UTF-8 with a BOM, so Excel opens it correctly). Readings are attributed to
+the owner whose assignment was active when each sample was taken, so reassigning a
+meter mid-range splits the numbers correctly. Ranges are capped at 366 days and
+250,000 samples.
+
+## Debug tools (testing)
+
+Admin panel → **Debug** is for testing only — it rewrites the sampler's stored
+history, so real consumption cannot be reconstructed afterwards.
+
+- Pick a meter (the From/To dates control the day editor; the most recent 62 days
+  are shown, newest first).
+- **Daily consumption** — type the kWh for a day and save. That day's samples are
+  replaced by one synthetic reading and the owner's running total is adjusted by
+  the difference, so the dashboard, categories and reports reflect it immediately.
+- **Assignment** — change the day the current owner got the meter and the total
+  consumed; useful for testing reports and category thresholds across months.
+- **Quick actions** — take a sample now, reset the energy baseline (next sample
+  starts a fresh delta), or clear all readings for the meter.
 
 ## Email setup (Gmail)
 

@@ -133,3 +133,88 @@ export function monthRange(now: Date = new Date(), timeZone: string = appTimeZon
     timeZone,
   };
 }
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+/** Absolute instant for a local calendar date at midnight (report ranges). */
+export function localDateToInstant(
+  year: number,
+  month: number,
+  day: number,
+  timeZone: string = appTimeZone(),
+): Date {
+  return wallClockToInstant(year, month, day, timeZone);
+}
+
+/** "YYYY-MM-DD" in the marina time zone. */
+export function localDateKey(date: Date, timeZone: string = appTimeZone()): string {
+  const wall = wallClock(date, timeZone);
+  return `${wall.year}-${pad2(wall.month)}-${pad2(wall.day)}`;
+}
+
+/** "YYYY-MM-DD HH:00" in the marina time zone. */
+export function localHourKey(date: Date, timeZone: string = appTimeZone()): string {
+  const wall = wallClock(date, timeZone);
+  return `${wall.year}-${pad2(wall.month)}-${pad2(wall.day)} ${pad2(wall.hour)}:00`;
+}
+
+/** "YYYY-MM-DD HH:MM:SS" in the marina time zone. */
+export function localTimestampKey(date: Date, timeZone: string = appTimeZone()): string {
+  const wall = wallClock(date, timeZone);
+  return `${wall.year}-${pad2(wall.month)}-${pad2(wall.day)} ${pad2(wall.hour)}:${pad2(wall.minute)}:${pad2(wall.second)}`;
+}
+
+
+/** Parses a strict "YYYY-MM-DD" calendar date (no time zone conversion). */
+export function parseLocalDateKey(value: string): { year: number; month: number; day: number } | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return { year, month, day };
+}
+
+/** Local midnight boundaries for a "YYYY-MM-DD" date; null when invalid. */
+export function localDayRange(
+  isoDate: string,
+  timeZone: string = appTimeZone(),
+): { key: string; start: Date; end: Date } | null {
+  const parts = parseLocalDateKey(isoDate);
+  if (!parts) return null;
+  const start = wallClockToInstant(parts.year, parts.month, parts.day, timeZone);
+  const next = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + 1));
+  const end = wallClockToInstant(
+    next.getUTCFullYear(),
+    next.getUTCMonth() + 1,
+    next.getUTCDate(),
+    timeZone,
+  );
+  return { key: isoDate, start, end };
+}
+
+/** Adds one calendar day to a "YYYY-MM-DD" key (UTC arithmetic — dates only). */
+export function nextLocalDateKey(isoDate: string): string {
+  const parts = parseLocalDateKey(isoDate);
+  if (!parts) return isoDate;
+  const next = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + 1));
+  return `${next.getUTCFullYear()}-${pad2(next.getUTCMonth() + 1)}-${pad2(next.getUTCDate())}`;
+}
+
+/** Subtracts one calendar day from a "YYYY-MM-DD" key. */
+export function previousLocalDateKey(isoDate: string): string {
+  const parts = parseLocalDateKey(isoDate);
+  if (!parts) return isoDate;
+  const previous = new Date(Date.UTC(parts.year, parts.month - 1, parts.day - 1));
+  return `${previous.getUTCFullYear()}-${pad2(previous.getUTCMonth() + 1)}-${pad2(previous.getUTCDate())}`;
+}

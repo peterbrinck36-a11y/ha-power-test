@@ -116,6 +116,19 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   or unassigns one (`unassignMeterFromUser`, which closes the assignment period).
   The owner dashboard renders one card per meter; categories aggregate all of an
   owner's meters for the month.
+- Reports (`/admin/reports`, admin-only) reuse the same attribution rule: readings are
+  joined to the assignment window active at `recorded_at`, then bucketed in
+  `APP_TIMEZONE` with `localDateKey`/`localHourKey`/`localTimestampKey`
+  (`src/lib/reports.ts`). CSV comes from `/api/admin/reports/export` with identical
+  query params; never aggregate from `meter_assignments.consumed_kwh`. Ranges are
+  capped at 366 days / 250,000 samples.
+- Debug tools (`/admin/debug`, admin-only, `src/app/admin/debug/actions.ts`) rewrite
+  stored history for testing: `saveDailyTotals` replaces a local day's readings with
+  one synthetic reading at local noon and adjusts the open assignment's
+  `consumed_kwh` by the difference; `saveAssignment` moves `started_at` and sets
+  `consumed_kwh`; `sampleNow`/`resetBaseline`/`clearReadings` wrap the sampler
+  helpers. Revalidate `/dashboard`, `/admin/reports`, `/admin/meters`, `/admin/users`
+  and `/admin/debug` after any edit.
 - Consumption categories are ranking tiers, not billing: `categories.min_kwh` thresholds
   are unique and sorted ascending; the top tier is open-ended. A month total is
   `SUM(readings.delta_kwh)` over rows whose `recorded_at` falls inside the assignment
@@ -184,8 +197,10 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
 - [x] Phase 8 — admin UX: per-user detail page (`/admin/users/[id]`) listing every
   meter with create/assign/unassign, tabbed Settings (Advanced: email + categories),
   8-character password minimum
-- [ ] Phase 9 — monthly consumption reports/archive per user (the query model already
-  supports it: `SUM(readings.delta_kwh)` grouped by month and assignment window)
+- [x] Phase 9 — consumption reports: admin Reports tab (users × date range), daily /
+  hourly / raw views, per-user totals, CSV export with the same parameters
+- [x] Phase 10 — debug tools: admin Debug tab with per-day kWh editing per meter,
+  assignment date/total editing, sample-now, baseline reset and clear-readings
 
 ## Gotchas learned the hard way
 
