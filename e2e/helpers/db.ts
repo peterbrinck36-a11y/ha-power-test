@@ -9,6 +9,10 @@ export type SeedUser = {
   password: string;
   role?: "admin" | "owner";
   active?: boolean;
+  /** Seed a user still holding an emailed temporary password. */
+  mustChangePassword?: boolean;
+  /** When set, the login flow rejects the temporary password after this time. */
+  tempPasswordExpiresAt?: Date | null;
 };
 
 export type SeedMeter = {
@@ -49,15 +53,18 @@ export function seedUser(user: SeedUser): number {
 
     const info = db
       .prepare(
-        `INSERT INTO users (email, username, password_hash, role, active)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO users
+           (email, username, password_hash, role, active, must_change_password, temp_password_expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         user.email.toLowerCase(),
         user.username,
         hashSync(user.password, 12),
         user.role ?? "owner",
-        user.active ?? true ? 1 : 0,
+        (user.active ?? true) ? 1 : 0,
+        (user.mustChangePassword ?? false) ? 1 : 0,
+        user.tempPasswordExpiresAt ? user.tempPasswordExpiresAt.getTime() : null,
       );
     return Number(info.lastInsertRowid);
   } finally {
@@ -160,6 +167,16 @@ export function setLastAdminPassword(email: string, newPassword: string): void {
   try {
     db.prepare("UPDATE users SET password_hash = ? WHERE email = ?")
       .run(hashSync(newPassword, 12), email.toLowerCase());
+  } finally {
+    db.close();
+  }
+}
+
+/** Removes the stored Gmail configuration (used to test the email-failure path). */
+export function clearEmailSettings(): void {
+  const db = open();
+  try {
+    db.prepare("DELETE FROM app_settings").run();
   } finally {
     db.close();
   }

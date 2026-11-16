@@ -31,6 +31,9 @@ export const getSessionUser = cache(async (): Promise<User | null> => {
   const user = rows[0];
   if (!user || !user.active) return null;
 
+  // A password change/reset bumps session_version — older cookies stop working.
+  if ((session.sv ?? 0) !== user.sessionVersion) return null;
+
   return user;
 });
 
@@ -51,6 +54,8 @@ export async function clearSessionCookie(): Promise<void> {
 export async function requireUser(): Promise<User> {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  // Temporary-password accounts cannot reach the app until they choose one.
+  if (user.mustChangePassword) redirect("/account/password");
   return user;
 }
 

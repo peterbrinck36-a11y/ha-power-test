@@ -12,6 +12,8 @@ export type SessionPayload = {
   userId: number;
   role: SessionRole;
   username: string;
+  /** users.session_version at issue time — bumped on password change/reset. */
+  sv: number;
 };
 
 // Ephemeral fallback for local dev — regenerating per boot invalidates old
@@ -32,7 +34,12 @@ function signingKey(): Uint8Array {
 }
 
 export async function createSessionToken(payload: SessionPayload): Promise<string> {
-  return new SignJWT({ userId: payload.userId, role: payload.role, username: payload.username })
+  return new SignJWT({
+    userId: payload.userId,
+    role: payload.role,
+    username: payload.username,
+    sv: payload.sv,
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(String(payload.userId))
     .setIssuedAt()
@@ -50,7 +57,7 @@ export async function verifySessionToken(
   try {
     const { payload } = await jwtVerify(token, signingKey(), { algorithms: ["HS256"] });
 
-    const { userId, role, username } = payload;
+    const { userId, role, username, sv } = payload;
     if (typeof userId !== "number" || Number.isNaN(userId)) return null;
     if (role !== "admin" && role !== "owner") return null;
 
@@ -58,6 +65,8 @@ export async function verifySessionToken(
       userId,
       role,
       username: typeof username === "string" ? username : "",
+      // Tokens issued before session_version existed count as version 0.
+      sv: typeof sv === "number" && Number.isFinite(sv) ? sv : 0,
     };
   } catch {
     return null;

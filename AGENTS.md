@@ -53,6 +53,9 @@ Running the production build locally: `node .next/standalone/server.js` from
 | `TRUSTED_PROXY_HOPS` | no | default 1; rate-limit IP = Nth entry from the RIGHT of `X-Forwarded-For` (left part is client-forgeable); `0` = ignore header |
 | `SAMPLE_INTERVAL_MS` | no | sampler cadence, default `120000` (2 min), clamped to ≥5s |
 | `SAMPLER_DISABLED` | no | `1` disables the background loop (E2E uses this; the manual endpoint still works) |
+| `APP_URL` | no | public base URL for emailed links; when unset the app falls back to the request origin (`x-forwarded-proto`/`host`) |
+| `EMAIL_SECRET` | no | extra key material for encrypting the stored Gmail app password; falls back to `SESSION_SECRET` |
+| `EMAIL_CAPTURE_FILE` | tests only | append outgoing emails to this JSONL file instead of sending through Gmail |
 
 Copy `.env.example` → `.env` for local development; never commit `.env` or `data/`.
 
@@ -72,6 +75,9 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
 6. Owner-facing totals come from our DB (`meter_assignments`), never from the HA energy
    counter. Only `src/lib/sampler.ts` writes `readings` / `meter_state`; assignment
    changes go through `syncAssignment` in `src/lib/meters.ts`.
+7. Email credentials never leave the server: the Gmail app password is write-only,
+   encrypted with AES-256-GCM (key from `EMAIL_SECRET`/`SESSION_SECRET`), and only
+   `getPublicEmailSettings()` may be passed to a client component.
 
 ## Conventions
 
@@ -79,6 +85,18 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   APIs = route handlers under `src/app/api/*`.
 - One login field matches email **or** username (both stored, both unique,
   case-insensitive match at login).
+- New users are onboarded by email: `createUser` generates a 16-char temporary
+  password (`src/lib/passwords.ts`), sets `must_change_password`, and sends the
+  invitation. If sending fails the account still exists and the action returns the
+  temporary password once so the dialog can show it. `requireUser` redirects
+  `must_change_password` users to `/account/password`; changing the password clears
+  the flag, clears `temp_password_expires_at` and bumps `session_version` (old JWTs
+  carry `sv` and stop matching). An admin typing a password in the user dialog has
+  the same effect — it signs that user out everywhere.
+- `/account/password` must call `getSessionUser`, **not** `requireUser` — otherwise
+  the must-change redirect loops on itself.
+- The Gmail app password is a normal admin Settings field but is never rendered back:
+  the form shows "stored" and a blank submit keeps the saved value.
 - Energy sensors may report Wh, kWh or MWh — `toKwh` in `src/lib/ha/parse.ts`
   normalizes to kWh **before** the delta is taken. Power is normalized to W.
 - Consumption is stored in our DB per ownership period: `meter_assignments` holds
@@ -117,7 +135,10 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   `meter_state`, 2-minute always-on sampler (`src/instrumentation.ts`), owner totals
   from `consumed_kwh` since assignment (HA `kwh_offset` retired), automatic reset on
   reassignment, `POST /api/admin/sample` manual pass
-- [ ] Phase 6 — monthly consumption reports per user (query model already supports it:
+- [ ] Phase 6 — email onboarding: Gmail SMTP settings in `/admin/settings` (app
+  password encrypted at rest), test email, emailed temporary passwords, forced
+  first-login password change, admin direct password set
+- [ ] Phase 7 — monthly consumption reports per user (query model already supports it:
   `SUM(readings.delta_kwh)` grouped by month and assignment window)
 
 ## Gotchas learned the hard way
@@ -171,6 +192,16 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   server (its worker child inherits the stdio pipes). This repo instead spawns
   the server in `e2e/global-setup.ts` and kills the process tree with
   `taskkill /T /F` in `e2e/global-teardown.ts`.
+- **Gmail needs an app password**: `smtp.gmail.com:465`, and the Google account must
+  have 2-Step Verification enabled — a normal password fails with `EAUTH`. The app
+  password is 16 letters (spaces allowed, stripped before saving).
+- **Email capture in E2E**: `EMAIL_CAPTURE_FILE` only writes JSONL *after* settings
+  exist — `sendEmail` checks config before the capture branch, so tests that expect
+  "not configured" must clear `app_settings`. Capture paths must be unique per run so
+  parallel/restarted workers don't read each other's mail.
+- **Password policy lives in a client-safe module**: import
+  `MIN_PASSWORD_LENGTH` from `src/lib/password-policy.ts`; importing
+  `src/lib/passwords.ts` (node:crypto) into a client component breaks the bundle.
 - **E2E gotchas** (see `e2e/helpers/*`): the SQLite DB path is unique per run
   (never unlink on Windows); seeds are idempotent (beforeAll re-runs when
   Playwright restarts a worker after a failed test); `MAX_LOGIN_ATTEMPTS=1000`

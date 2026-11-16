@@ -5,13 +5,17 @@ import { and, count, eq, ne, sql } from "drizzle-orm";
 import { hashSync } from "bcryptjs";
 
 import { requireAdmin } from "@/lib/auth";
+import { getAppUrl } from "@/lib/app-url";
 import { db } from "@/lib/db";
+import { describeEmailError, sendEmail } from "@/lib/email/client";
+import { invitationEmail } from "@/lib/email/templates";
 import { type FormState } from "@/lib/forms";
+import { MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
+import { generateTemporaryPassword, tempPasswordExpiry } from "@/lib/passwords";
 import { users } from "@/lib/schema";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]{1,39}$/;
-const MIN_PASSWORD_LENGTH = 8;
 
 function str(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
@@ -49,14 +53,10 @@ export async function createUser(
 
   const email = str(formData, "email").toLowerCase();
   const username = str(formData, "username");
-  const password = String(formData.get("password") ?? "");
   const role = str(formData, "role") === "admin" ? "admin" : "owner";
 
   const invalid = validateIdentity(email, username);
   if (invalid) return { error: invalid, ok: false };
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, ok: false };
-  }
 
   const emailTaken = db
     .select({ id: users.id })
@@ -72,9 +72,21 @@ export async function createUser(
     .all();
   if (usernameTaken.length > 0) return { error: "That username is already in use.", ok: false };
 
+  // New accounts never get an admin-typed password: a strong temporary one is
+  // generated, emailed, and must be replaced on first sign-in.
+  const temporaryPassword = generateTemporaryPassword();
+  const expiresAt = tempPasswordExpiry();
+
   try {
     db.insert(users)
-      .values({ email, username, passwordHash: hashSync(password, 12), role })
+      .values({
+        email,
+        username,
+        passwordHash: hashSync(temporaryPassword, 12),
+        role,
+        mustChangePassword: true,
+        tempPasswordExpiresAt: expiresAt,
+      })
       .run();
   } catch (err) {
     if (uniqueViolation(err)) return { error: "Email or username already in use.", ok: false };
@@ -83,7 +95,29 @@ export async function createUser(
 
   revalidatePath("/admin/users");
   revalidatePath("/admin");
-  return { error: null, ok: true };
+
+  // The account exists either way; on failure the admin sees the password once.
+  try {
+    const appUrl = await getAppUrl();
+    await sendEmail(
+      invitationEmail({
+        to: email,
+        username,
+        temporaryPassword,
+        loginUrl: `${appUrl}/login`,
+        expiresAt,
+      }),
+    );
+    return { error: null, ok: true, emailSent: true };
+  } catch (err) {
+    return {
+      error: null,
+      ok: true,
+      emailSent: false,
+      tempPassword: temporaryPassword,
+      emailError: describeEmailError(err),
+    };
+  }
 }
 
 export async function updateUser(
@@ -148,8 +182,17 @@ export async function updateUser(
         role,
         active,
         updatedAt: new Date(),
-        // Admin-set password reset: blank field = keep current password.
-        ...(password ? { passwordHash: hashSync(password, 12) } : {}),
+        // Admin-set password reset: blank field = keep the current password.
+        // A typed password is final (no forced change) and signs the user out
+        // everywhere by bumping session_version.
+        ...(password
+          ? {
+              passwordHash: hashSync(password, 12),
+              mustChangePassword: false,
+              tempPasswordExpiresAt: null,
+              sessionVersion: sql`${users.sessionVersion} + 1`,
+            }
+          : {}),
       })
       .where(eq(users.id, id))
       .run();

@@ -20,6 +20,9 @@ total starts at 0 when their meter is assigned and monthly reports are possible.
   password resets), create/edit/delete meters and assign them to owners.
   Assigning a meter to a different owner automatically restarts that owner's
   consumption at 0; editing the same owner's meter keeps the running total.
+- **Emailed invitations** — new users receive a temporary password by email
+  (Gmail SMTP), must choose their own password on first sign-in, and an admin
+  can still set a password directly for testing or hand-over.
 - **Home Assistant sensor picker** — searchable dropdown fed by a filtered
   `/api/states` query (power/energy device classes, W/kW/Wh/kWh units), with
   manual `entity_id` entry as a fallback.
@@ -64,6 +67,31 @@ JSON file instead of calling Home Assistant. Ideal for demos and tests.
    (W/kW) and an energy sensor (Wh/kWh) → assign an owner. The owner's total
    starts at 0 and grows as the sampler records consumption.
 
+## Email setup (Gmail)
+
+New accounts are invited by email. The app sends through Gmail SMTP with a
+Google **app password** — a normal account password will not work:
+
+1. Sign in to the Google account that should send the mail.
+2. Turn on **2-Step Verification** (`myaccount.google.com/security`); app
+   passwords are unavailable without it.
+3. Open `myaccount.google.com/apppasswords`, create one named e.g. "Marina
+   Shore Power", and copy the 16-letter password.
+4. In the app: admin → **Settings** → enter the Gmail address and the app
+   password → **Save settings** → **Send test email**.
+
+Notes:
+
+- The app password is stored encrypted (AES-256-GCM, key derived from
+  `EMAIL_SECRET` or `SESSION_SECRET`) and is never returned to the browser.
+  Rotating that secret means re-entering the app password.
+- Free Gmail accounts can send to roughly 500 recipients per day.
+- If email is not configured (or Gmail rejects the credentials), creating a
+  user still succeeds: the temporary password appears once in the dialog so the
+  admin can hand it over.
+- Emailed links use `APP_URL`; when unset the app falls back to the request
+  origin (`X-Forwarded-Proto` / `Host`).
+
 ## Environment variables
 
 | Variable | Required | Notes |
@@ -79,6 +107,9 @@ JSON file instead of calling Home Assistant. Ideal for demos and tests.
 | `TRUSTED_PROXY_HOPS` | no | Reverse proxies appending to `X-Forwarded-For` (default 1). Client IP for rate limiting = that many entries from the right; `0` = no proxy, ignore the header |
 | `SAMPLE_INTERVAL_MS` | no | sampler cadence in ms (default `120000` = 2 min, clamped to ≥5s) |
 | `SAMPLER_DISABLED` | no | `1` turns the background loop off (tests use this; `POST /api/admin/sample` still works) |
+| `APP_URL` | no | public base URL used in emailed links (`https://marina.example.com`); defaults to the request origin |
+| `EMAIL_SECRET` | no | key material for encrypting the stored Gmail app password; falls back to `SESSION_SECRET` |
+| `EMAIL_CAPTURE_FILE` | tests only | write outgoing emails to this JSONL file instead of sending via Gmail |
 
 ## Production deployment (GHCR + Dockge)
 
@@ -116,6 +147,8 @@ src/instrumentation.ts  boots the background sampler once per server process
 src/app/                routes: login, dashboard, admin/*, api/*
 src/lib/sampler.ts      always-on 2-minute sampling pass (readings + deltas)
 src/lib/meters.ts       ownership periods / automatic consumption reset
+src/lib/email/          Gmail SMTP sender, encrypted settings, email templates
+src/app/account/password forced first-login password change
 src/lib/ha/             server-only HA client (cache, parsers, mock support)
 src/lib/                db, schema, auth, formatters, shared API types
 src/components/         dashboard + admin UI components

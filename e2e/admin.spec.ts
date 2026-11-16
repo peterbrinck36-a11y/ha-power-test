@@ -1,10 +1,14 @@
 import { expect, test } from "@playwright/test";
 
-import { seedAssignment, seedMeter, seedUser } from "./helpers/db";
+import { clearEmailSettings, seedAssignment, seedMeter, seedUser } from "./helpers/db";
 import { adminEmail, adminPassword } from "./helpers/env";
 import { signOut } from "./helpers/ui";
 
 test.beforeAll(() => {
+  // No Gmail config in this spec: user creation falls back to showing the
+  // temporary password once, which is exactly what the first test exercises.
+  clearEmailSettings();
+
   seedUser({
     email: "ui-owner@marina.test",
     username: "uiskipper",
@@ -57,19 +61,30 @@ test("admin creates a user via the dialog; the account can log in", async ({ pag
   const dialog = page.getByRole("dialog");
   await dialog.locator("#user-email").fill("new-owner@marina.test");
   await dialog.locator("#user-username").fill("newskipper");
-  await dialog.locator("#user-password").fill("new-pass-123");
   await dialog.getByRole("button", { name: "Create user" }).click();
+
+  // Email is not configured, so the account is created anyway and the dialog
+  // reveals the generated temporary password exactly once.
+  await expect(dialog.getByText("invitation email could not be sent")).toBeVisible();
+  const temporaryPassword = (await dialog.locator("[data-temp-password]").innerText()).trim();
+  expect(temporaryPassword).toHaveLength(16);
+  await dialog.getByRole("button", { name: "Done" }).click();
   await expect(dialog).toBeHidden();
 
   const row = page.getByRole("row").filter({ hasText: "newskipper" });
   await expect(row).toBeVisible();
 
-  // The new account can actually sign in.
+  // The new account can sign in, but must choose its own password first.
   await signOut(page);
   await page.goto("/login");
   await page.getByLabel("Email or username").fill("newskipper");
-  await page.getByLabel("Password").fill("new-pass-123");
+  await page.getByLabel("Password").fill(temporaryPassword);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/account\/password$/);
+
+  await page.locator("#new-password").fill("new-pass-1234");
+  await page.locator("#confirm-password").fill("new-pass-1234");
+  await page.getByRole("button", { name: "Save password and continue" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("No meters assigned yet")).toBeVisible();
   await signOut(page);
@@ -90,7 +105,7 @@ test("admin password reset invalidates the old password", async ({ page }) => {
   // React 19 resets the form after the failed attempt, so start from a fresh page.
   await page.goto("/login");
   await page.getByLabel("Email or username").fill("newskipper");
-  await page.getByLabel("Password").fill("new-pass-123");
+  await page.getByLabel("Password").fill("new-pass-1234");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.locator("p[role=alert]")).toContainText(
     "Invalid email/username or password.",

@@ -21,6 +21,19 @@ function resolveE2eDbPath(): string {
 
 export const e2eDbPath = resolveE2eDbPath();
 
+/**
+ * Emails sent by the app are appended to this file when EMAIL_CAPTURE_FILE is
+ * set, so specs can read invitations/test mails without a real SMTP server.
+ */
+function resolveEmailCapturePath(): string {
+  if (process.env.E2E_EMAIL_CAPTURE_PATH) return process.env.E2E_EMAIL_CAPTURE_PATH;
+  const generated = path.join(os.tmpdir(), `marina-e2e-emails-${Date.now()}.jsonl`);
+  process.env.E2E_EMAIL_CAPTURE_PATH = generated;
+  return generated;
+}
+
+export const emailCapturePath = resolveEmailCapturePath();
+
 export const adminEmail = "admin@marina.test";
 export const adminPassword = "e2e-admin-pass";
 
@@ -36,6 +49,8 @@ export const serverEnv: Record<string, string> = {
   COOKIE_SECURE: "auto",
   // The whole suite logs in many times from one IP — relax the limiter.
   MAX_LOGIN_ATTEMPTS: "1000",
+  // Capture outbound email as JSONL instead of talking to Gmail.
+  EMAIL_CAPTURE_FILE: emailCapturePath,
   // The background sampler is triggered explicitly per test (POST
   // /api/admin/sample) so assertions are deterministic.
   SAMPLER_DISABLED: "1",

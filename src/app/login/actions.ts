@@ -103,9 +103,30 @@ export async function login(
     return { error: "This account is disabled. Contact the marina admin." };
   }
 
+  if (
+    user.mustChangePassword &&
+    user.tempPasswordExpiresAt &&
+    user.tempPasswordExpiresAt.getTime() < Date.now()
+  ) {
+    return {
+      error: "This temporary password has expired. Contact the marina admin for a new one.",
+    };
+  }
+
   attempts.delete(ip);
-  await setSessionCookie({ userId: user.id, role: user.role, username: user.username });
-  redirect(user.role === "admin" ? "/admin" : "/dashboard");
+  await setSessionCookie({
+    userId: user.id,
+    role: user.role,
+    username: user.username,
+    sv: user.sessionVersion,
+  });
+  redirect(
+    user.mustChangePassword
+      ? "/account/password"
+      : user.role === "admin"
+        ? "/admin"
+        : "/dashboard",
+  );
 }
 
 export async function logout(): Promise<void> {

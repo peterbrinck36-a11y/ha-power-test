@@ -24,6 +24,14 @@ export const users = sqliteTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: text("role", { enum: ["admin", "owner"] }).notNull().default("owner"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
+  /** True until the user replaces their emailed temporary password. */
+  mustChangePassword: integer("must_change_password", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  /** Temporary-password expiry; null once the user sets a real password. */
+  tempPasswordExpiresAt: integer("temp_password_expires_at", { mode: "timestamp_ms" }),
+  /** Bumped on every password change/reset; stale session JWTs stop validating. */
+  sessionVersion: integer("session_version").notNull().default(0),
   ...timestamps,
 });
 
@@ -101,6 +109,19 @@ export const meterState = sqliteTable("meter_state", {
     .notNull()
     .default(false),
   lastSampledAt: integer("last_sampled_at", { mode: "timestamp_ms" }),
+});
+
+/**
+ * Small key/value store for app-wide configuration (currently the Gmail
+ * sender). Values are never exposed to the browser except through explicit
+ * public projections.
+ */
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
 });
 
 export type User = typeof users.$inferSelect;

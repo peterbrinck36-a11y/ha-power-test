@@ -5,6 +5,7 @@ import { useActionState, useEffect, useState } from "react";
 import { createUser, deleteUser, updateUser } from "@/app/admin/users/actions";
 import { Dialog } from "@/components/ui/dialog";
 import { initialFormState } from "@/lib/forms";
+import { MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 
 export type UserRow = {
   id: number;
@@ -36,9 +37,13 @@ function UserDialog({
     initialFormState,
   );
 
+  // When the invitation email fails the account still exists, so keep the
+  // dialog open and reveal the temporary password exactly once.
+  const showEmailFallback = !isEdit && state.ok && !state.emailSent;
+
   useEffect(() => {
-    if (state.ok) onClose();
-  }, [state.ok, onClose]);
+    if (state.ok && !showEmailFallback) onClose();
+  }, [state.ok, showEmailFallback, onClose]);
 
   return (
     <Dialog
@@ -46,97 +51,141 @@ function UserDialog({
       onClose={onClose}
       title={isEdit ? `Edit user — ${user.username}` : "New user"}
     >
-      <form action={formAction} className="space-y-4">
-        {isEdit ? <input type="hidden" name="id" value={user.id} /> : null}
-
-        <div>
-          <label htmlFor="user-email" className="block text-sm font-medium text-slate-700">
-            Email
-          </label>
-          <input
-            id="user-email"
-            name="email"
-            type="email"
-            required
-            defaultValue={user?.email ?? ""}
-            className={inputClasses}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="user-username" className="block text-sm font-medium text-slate-700">
-            Username
-          </label>
-          <input
-            id="user-username"
-            name="username"
-            type="text"
-            required
-            defaultValue={user?.username ?? ""}
-            className={inputClasses}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="user-role" className="block text-sm font-medium text-slate-700">
-            Role
-          </label>
-          <select
-            id="user-role"
-            name="role"
-            defaultValue={user?.role ?? "owner"}
-            className={inputClasses}
-          >
-            <option value="owner">Boat owner</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-
-        {isEdit ? (
-          <div className="flex items-center gap-2">
-            <input
-              id="user-active"
-              name="active"
-              type="checkbox"
-              defaultChecked={user.active}
-              className="h-4 w-4"
-            />
-            <label htmlFor="user-active" className="text-sm text-slate-700">
-              Account active
-            </label>
-          </div>
-        ) : null}
-
-        <div>
-          <label htmlFor="user-password" className="block text-sm font-medium text-slate-700">
-            {isEdit ? "New password (leave blank to keep current)" : "Password"}
-          </label>
-          <input
-            id="user-password"
-            name="password"
-            type="password"
-            required={!isEdit}
-            minLength={8}
-            autoComplete="new-password"
-            className={inputClasses}
-          />
-        </div>
-
-        {state.error ? (
-          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-            {state.error}
+      {showEmailFallback ? (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700">
+            The account was created, but the invitation email could not be sent.
           </p>
-        ) : null}
-
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className={secondaryButtonClasses}>
-            Cancel
-          </button>
-          <button type="submit" disabled={pending} className={primaryButtonClasses}>
-            {pending ? "Saving…" : isEdit ? "Save changes" : "Create user"}
-          </button>
+          {state.emailError ? (
+            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              {state.emailError}
+            </p>
+          ) : null}
+          <div>
+            <p className="text-sm font-medium text-slate-700">Temporary password</p>
+            <code
+              data-temp-password
+              className="mt-1 block break-all rounded-lg bg-slate-100 px-3 py-2 font-mono text-sm text-slate-900"
+            >
+              {state.tempPassword}
+            </code>
+            <p className="mt-1 text-xs text-slate-500">
+              Shown only once. Share it securely — the user must choose a new password after
+              signing in.
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <button type="button" onClick={onClose} className={primaryButtonClasses}>
+              Done
+            </button>
+          </div>
         </div>
-      </form>
+      ) : (
+        <form action={formAction} className="space-y-4">
+          {isEdit ? <input type="hidden" name="id" value={user.id} /> : null}
+
+          <div>
+            <label htmlFor="user-email" className="block text-sm font-medium text-slate-700">
+              Email
+            </label>
+            <input
+              id="user-email"
+              name="email"
+              type="email"
+              required
+              defaultValue={user?.email ?? ""}
+              className={inputClasses}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="user-username" className="block text-sm font-medium text-slate-700">
+              Username
+            </label>
+            <input
+              id="user-username"
+              name="username"
+              type="text"
+              required
+              defaultValue={user?.username ?? ""}
+              className={inputClasses}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="user-role" className="block text-sm font-medium text-slate-700">
+              Role
+            </label>
+            <select
+              id="user-role"
+              name="role"
+              defaultValue={user?.role ?? "owner"}
+              className={inputClasses}
+            >
+              <option value="owner">Boat owner</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          {isEdit ? (
+            <div className="flex items-center gap-2">
+              <input
+                id="user-active"
+                name="active"
+                type="checkbox"
+                defaultChecked={user.active}
+                className="h-4 w-4"
+              />
+              <label htmlFor="user-active" className="text-sm text-slate-700">
+                Account active
+              </label>
+            </div>
+          ) : null}
+
+          {isEdit ? (
+            <div>
+              <label
+                htmlFor="user-password"
+                className="block text-sm font-medium text-slate-700"
+              >
+                New password (leave blank to keep the current one)
+              </label>
+              <input
+                id="user-password"
+                name="password"
+                type="password"
+                minLength={MIN_PASSWORD_LENGTH}
+                autoComplete="new-password"
+                className={inputClasses}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                At least {MIN_PASSWORD_LENGTH} characters. Setting a password signs the user out
+                everywhere; they can use it immediately.
+              </p>
+            </div>
+          ) : (
+            <p className="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-800">
+              A temporary password is generated and emailed to the user. They choose their own
+              password the first time they sign in.
+            </p>
+          )}
+
+          {state.error ? (
+            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              {state.error}
+            </p>
+          ) : null}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className={secondaryButtonClasses}>
+              Cancel
+            </button>
+            <button type="submit" disabled={pending} className={primaryButtonClasses}>
+              {pending ? "Saving…" : isEdit ? "Save changes" : "Create user"}
+            </button>
+          </div>
+        </form>
+      )}
     </Dialog>
   );
 }
@@ -149,7 +198,7 @@ export function NewUserButton() {
       <button type="button" onClick={() => setOpen(true)} className={primaryButtonClasses}>
         New user
       </button>
-      <UserDialog open={open} onClose={() => setOpen(false)} user={null} />
+      {open ? <UserDialog open onClose={() => setOpen(false)} user={null} /> : null}
     </>
   );
 }
@@ -163,7 +212,9 @@ export function UserRowActions({ user }: { user: UserRow }) {
 
   return (
     <div className="flex items-center justify-end gap-1">
-      <UserDialog open={editOpen} onClose={() => setEditOpen(false)} user={user} />
+      {editOpen ? (
+        <UserDialog open onClose={() => setEditOpen(false)} user={user} />
+      ) : null}
 
       <button
         type="button"

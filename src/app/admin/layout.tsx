@@ -20,6 +20,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <Link href="/admin/meters" className="text-slate-600 hover:text-slate-900">
               Meters
             </Link>
+            <Link href="/admin/settings" className="text-slate-600 hover:text-slate-900">
+              Settings
+            </Link>
             <Link href="/dashboard" className="text-slate-600 hover:text-slate-900">
               Owner view
             </Link>

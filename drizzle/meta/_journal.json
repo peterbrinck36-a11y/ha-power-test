@@ -15,6 +15,13 @@
       "when": 1794832039439,
       "tag": "0001_young_xorn",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794833818581,
+      "tag": "0002_peaceful_sprite",
+      "breakpoints": true
     }
   ]
 }
