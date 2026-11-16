@@ -54,7 +54,7 @@ test.describe.serial("email invitations", () => {
     const suffix = Date.now().toString(36);
     const username = `invited${suffix}`;
     const email = `${username}@marina.test`;
-    const newPassword = "invited-pass-1234";
+    const newPassword = "invited8";
 
     await adminLogin(page);
     await page.getByRole("link", { name: "Users" }).click();
@@ -82,6 +82,7 @@ test.describe.serial("email invitations", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/account\/password$/);
     await expect(page.getByRole("heading", { name: "Choose your password" })).toBeVisible();
+    await expect(page.getByText(/At least 8 characters/)).toBeVisible();
 
     await page.locator("#new-password").fill(newPassword);
     await page.locator("#confirm-password").fill(newPassword);

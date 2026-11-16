@@ -6,7 +6,7 @@ import {
   createCategory,
   deleteCategory,
   updateCategory,
-} from "@/app/admin/categories/actions";
+} from "@/app/admin/settings/category-actions";
 import { Dialog } from "@/components/ui/dialog";
 import type { CategoryTier } from "@/lib/api-types";
 import { CATEGORY_COLORS, categoryColor } from "@/lib/category-colors";

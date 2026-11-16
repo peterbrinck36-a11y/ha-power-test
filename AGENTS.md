@@ -94,6 +94,10 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   the flag, clears `temp_password_expires_at` and bumps `session_version` (old JWTs
   carry `sv` and stop matching). An admin typing a password in the user dialog has
   the same effect — it signs that user out everywhere.
+- User-chosen and admin-set passwords need at least `MIN_PASSWORD_LENGTH` (8)
+  characters — the constant lives in client-safe `src/lib/password-policy.ts` and
+  every form/validation imports it. Emailed temporary passwords stay 16 random
+  characters; `/account/password` rejects reusing the temporary one.
 - `/account/password` must call `getSessionUser`, **not** `requireUser` — otherwise
   the must-change redirect loops on itself.
 - The Gmail app password is a normal admin Settings field but is never rendered back:
@@ -106,8 +110,12 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   0 — this is the automatic reset. Editing the same owner's meter must not reset it.
 - Changing a meter's energy entity re-baselines the sampler (`resetEnergyBaseline`)
   without discarding the running total.
-- In practice each user has exactly one meter, but the data model allows several
-  (`meters.owner_id` nullable FK).
+- Users can own several meters. `/admin/users/[id]` is the per-user detail page: it
+  lists every meter with its open-assignment total, creates meters with the owner
+  preselected (`defaultOwnerId`), assigns an unassigned meter (`assignMeterToUser`)
+  or unassigns one (`unassignMeterFromUser`, which closes the assignment period).
+  The owner dashboard renders one card per meter; categories aggregate all of an
+  owner's meters for the month.
 - Consumption categories are ranking tiers, not billing: `categories.min_kwh` thresholds
   are unique and sorted ascending; the top tier is open-ended. A month total is
   `SUM(readings.delta_kwh)` over rows whose `recorded_at` falls inside the assignment
@@ -127,6 +135,11 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   not use raw `slate-*` or `bg-white` — status colors (red/emerald/amber/sky) are
   the exception and keep explicit `dark:` variants (e.g. `bg-red-50
   dark:bg-red-500/10`).
+- Admin Settings is a tabbed page (`/admin/settings`); currently one tab,
+  **Advanced**, holding the Gmail settings and the consumption categories.
+  Category mutations live in `src/app/admin/settings/category-actions.ts` and
+  revalidate `/admin/settings` (plus `/admin` and `/dashboard`). There is no
+  separate `/admin/categories` route.
 - Dark mode is class-based (`@custom-variant dark (&:where(.dark, .dark *))`).
   `themeInitScript` from `src/lib/theme.ts` is inlined in `<head>` and sets `.dark`
   plus `color-scheme` from `localStorage["marina-theme"]` or `prefers-color-scheme`
@@ -165,10 +178,13 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   password encrypted at rest), test email, emailed temporary passwords, forced
   first-login password change, admin direct password set
 - [x] Phase 7 — consumption categories: admin-managed kWh tiers (`categories`),
-  `/admin/categories` CRUD with duplicate-threshold guard, calendar-month totals
-  (Europe/Copenhagen by default via `APP_TIMEZONE`), owner category card with
-  progress to the next tier, `readings` API `month` summary
-- [ ] Phase 8 — monthly consumption reports/archive per user (the query model already
+  category CRUD under Settings → Advanced (duplicate-threshold guard),
+  calendar-month totals (Europe/Copenhagen by default via `APP_TIMEZONE`), owner
+  category card with progress to the next tier, `readings` API `month` summary
+- [x] Phase 8 — admin UX: per-user detail page (`/admin/users/[id]`) listing every
+  meter with create/assign/unassign, tabbed Settings (Advanced: email + categories),
+  8-character password minimum
+- [ ] Phase 9 — monthly consumption reports/archive per user (the query model already
   supports it: `SUM(readings.delta_kwh)` grouped by month and assignment window)
 
 ## Gotchas learned the hard way

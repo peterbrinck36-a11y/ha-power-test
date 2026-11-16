@@ -34,11 +34,13 @@ function MeterDialog({
   onClose,
   meter,
   owners,
+  defaultOwnerId,
 }: {
   open: boolean;
   onClose: () => void;
   meter: MeterRow | null;
   owners: OwnerOption[];
+  defaultOwnerId?: number;
 }) {
   const isEdit = meter !== null;
   const [state, formAction, pending] = useActionState(
@@ -91,7 +93,7 @@ function MeterDialog({
           <select
             id="meter-owner"
             name="ownerId"
-            defaultValue={meter?.ownerId ?? ""}
+            defaultValue={meter?.ownerId ?? defaultOwnerId ?? ""}
             className={inputClasses}
           >
             <option value="">— Unassigned —</option>
@@ -141,7 +143,13 @@ function MeterDialog({
   );
 }
 
-export function NewMeterButton({ owners }: { owners: OwnerOption[] }) {
+export function NewMeterButton({
+  owners,
+  defaultOwnerId,
+}: {
+  owners: OwnerOption[];
+  defaultOwnerId?: number;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -149,7 +157,13 @@ export function NewMeterButton({ owners }: { owners: OwnerOption[] }) {
       <button type="button" onClick={() => setOpen(true)} className={primaryButtonClasses}>
         New meter
       </button>
-      <MeterDialog open={open} onClose={() => setOpen(false)} meter={null} owners={owners} />
+      <MeterDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        meter={null}
+        owners={owners}
+        defaultOwnerId={defaultOwnerId}
+      />
     </>
   );
 }

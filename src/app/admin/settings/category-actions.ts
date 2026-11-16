@@ -59,7 +59,7 @@ function validate(
 }
 
 function revalidateCategories() {
-  revalidatePath("/admin/categories");
+  revalidatePath("/admin/settings");
   revalidatePath("/admin");
   revalidatePath("/dashboard");
 }

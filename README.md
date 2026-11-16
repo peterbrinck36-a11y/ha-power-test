@@ -22,11 +22,16 @@ total starts at 0 when their meter is assigned and monthly reports are possible.
   even when Home Assistant is temporarily offline.
 - **Admin panel** — create/edit/disable/delete boat owners (including direct
   password resets), create/edit/delete meters and assign them to owners.
-  Assigning a meter to a different owner automatically restarts that owner's
-  consumption at 0; editing the same owner's meter keeps the running total.
+  Click a user to open their detail page and see every meter they own; create a
+  new meter for them, attach an unassigned one, or unassign one. Users may own
+  several meters — the dashboard shows one card per meter and the category total
+  combines them. Assigning a meter to a different owner automatically restarts
+  that owner's consumption at 0; editing the same owner's meter keeps the
+  running total.
 - **Emailed invitations** — new users receive a temporary password by email
   (Gmail SMTP), must choose their own password on first sign-in, and an admin
-  can still set a password directly for testing or hand-over.
+  can still set a password directly for testing or hand-over. Passwords need at
+  least 8 characters.
 - **Dark mode** — a sun/moon toggle in every header (and on the login screen)
   switches the whole UI, remembers the choice per browser, and otherwise follows
   the operating system's preference.
@@ -78,7 +83,7 @@ JSON file instead of calling Home Assistant. Ideal for demos and tests.
 
 Each owner is ranked against admin-defined kWh tiers for the current calendar month:
 
-1. Sign in as admin → **Categories → New category**, then add tiers in rising order
+1. Sign in as admin → **Settings → Advanced → New category**, then add tiers in rising order
    (e.g. Bronze `0`, Silver `150`, Gold `300`). Thresholds must be unique; the top
    tier is open-ended. The dialog suggests the next sensible threshold.
 2. Owners see a summary card at the top of `/dashboard`: the month label, their

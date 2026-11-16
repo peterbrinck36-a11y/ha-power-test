@@ -68,7 +68,8 @@ test.describe.serial("consumption categories", () => {
     await login(page, adminEmail, adminPassword);
     await expect(page).toHaveURL(/\/admin$/);
 
-    await page.goto("/admin/categories");
+    await page.goto("/admin/settings");
+    await expect(page.getByText("Advanced")).toBeVisible();
     await expect(page.getByText("No categories yet")).toBeVisible();
 
     // First tier defaults to 0 so everyone can be ranked from the start.
@@ -146,7 +147,7 @@ test.describe.serial("consumption categories", () => {
 
   test("admin can delete a tier", async ({ page }) => {
     await login(page, adminEmail, adminPassword);
-    await page.goto("/admin/categories");
+    await page.goto("/admin/settings");
 
     const gold = page.getByRole("row").filter({ hasText: "Gold" });
     await expect(gold).toBeVisible();

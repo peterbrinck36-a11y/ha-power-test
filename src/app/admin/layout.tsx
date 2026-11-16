@@ -21,9 +21,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <Link href="/admin/meters" className="text-ink-muted hover:text-ink">
               Meters
             </Link>
-            <Link href="/admin/categories" className="text-ink-muted hover:text-ink">
-              Categories
-            </Link>
             <Link href="/admin/settings" className="text-ink-muted hover:text-ink">
               Settings
             </Link>

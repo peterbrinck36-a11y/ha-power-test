@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { count, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
@@ -43,7 +44,12 @@ export default async function AdminUsersPage() {
             {rows.map((row) => (
               <tr key={row.id} className="border-b border-line last:border-0">
                 <td className="px-4 py-3">
-                  <span className="font-medium text-ink">{row.username}</span>
+                  <Link
+                    href={`/admin/users/${row.id}`}
+                    className="font-medium text-ink hover:text-sky-700 hover:underline dark:hover:text-sky-300"
+                  >
+                    {row.username}
+                  </Link>
                   <span
                     className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
                       row.role === "admin"
