@@ -16,6 +16,10 @@ total starts at 0 when their meter is assigned and monthly reports are possible.
 - **Background sampler** — every 2 minutes the server reads all meters and appends
   a reading (power, energy, kWh delta) to SQLite. Runs whether or not anyone is
   signed in; gaps recover from the HA counter on the next good sample.
+- **Consumption categories** — admins define kWh tiers (e.g. Bronze 0, Silver 150,
+  Gold 300); each owner sees their calendar-month total, current tier and how much
+  is left to the next one. Computed from the sampler's stored readings, so it works
+  even when Home Assistant is temporarily offline.
 - **Admin panel** — create/edit/disable/delete boat owners (including direct
   password resets), create/edit/delete meters and assign them to owners.
   Assigning a meter to a different owner automatically restarts that owner's
@@ -67,6 +71,28 @@ JSON file instead of calling Home Assistant. Ideal for demos and tests.
    (W/kW) and an energy sensor (Wh/kWh) → assign an owner. The owner's total
    starts at 0 and grows as the sampler records consumption.
 
+## Consumption categories
+
+Each owner is ranked against admin-defined kWh tiers for the current calendar month:
+
+1. Sign in as admin → **Categories → New category**, then add tiers in rising order
+   (e.g. Bronze `0`, Silver `150`, Gold `300`). Thresholds must be unique; the top
+   tier is open-ended. The dialog suggests the next sensible threshold.
+2. Owners see a summary card at the top of `/dashboard`: the month label, their
+   total across all their meters, their current tier, and how many kWh remain to the
+   next one (or "Not ranked yet" below the first tier).
+
+Details:
+
+- The month uses `APP_TIMEZONE` (default `Europe/Copenhagen`), so it flips at local
+  midnight, not UTC midnight.
+- Totals are summed from the sampler's stored `readings`, counting only rows inside
+  the assignment window that was active when each row was recorded. Reassigning a
+  meter therefore restarts that owner's monthly progress at 0.
+- With no tiers configured the card is hidden; deleting tiers hides it again.
+- Admins previewing `/dashboard` do not get a category card (the total is
+  account-level, so it has no meaning for the admin account).
+
 ## Email setup (Gmail)
 
 New accounts are invited by email. The app sends through Gmail SMTP with a
@@ -107,6 +133,7 @@ Notes:
 | `TRUSTED_PROXY_HOPS` | no | Reverse proxies appending to `X-Forwarded-For` (default 1). Client IP for rate limiting = that many entries from the right; `0` = no proxy, ignore the header |
 | `SAMPLE_INTERVAL_MS` | no | sampler cadence in ms (default `120000` = 2 min, clamped to ≥5s) |
 | `SAMPLER_DISABLED` | no | `1` turns the background loop off (tests use this; `POST /api/admin/sample` still works) |
+| `APP_TIMEZONE` | no | IANA zone for monthly category windows/labels (default `Europe/Copenhagen`) |
 | `APP_URL` | no | public base URL used in emailed links (`https://marina.example.com`); defaults to the request origin |
 | `EMAIL_SECRET` | no | key material for encrypting the stored Gmail app password; falls back to `SESSION_SECRET` |
 | `EMAIL_CAPTURE_FILE` | tests only | write outgoing emails to this JSONL file instead of sending via Gmail |

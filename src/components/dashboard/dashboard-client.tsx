@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ReadingsResponse } from "@/lib/api-types";
 
+import { CategoryCard } from "./category-card";
 import { MeterCard } from "./meter-card";
 import { RelativeTime } from "./relative-time";
 
@@ -103,6 +104,8 @@ export function DashboardClient() {
           {data.error ? ` (${data.error})` : null}
         </p>
       ) : null}
+
+      {data?.month ? <CategoryCard month={data.month} /> : null}
 
       {!data ? (
         <div className="rounded-2xl bg-white p-8 text-center shadow-sm">

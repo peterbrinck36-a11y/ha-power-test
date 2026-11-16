@@ -112,6 +112,26 @@ export const meterState = sqliteTable("meter_state", {
 });
 
 /**
+ * Monthly consumption tiers ("categories"). Ordered by `min_kwh`; the category
+ * a user is in is the highest tier whose threshold their month-to-date total has
+ * reached. Thresholds are unique so the ordering is unambiguous; the top tier is
+ * open-ended. Nothing is seeded — with no rows the owner-facing card is hidden.
+ */
+export const categories = sqliteTable(
+  "categories",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    /** Lower bound of the tier in kWh (inclusive). */
+    minKwh: real("min_kwh").notNull(),
+    /** Palette key from `src/lib/category-colors.ts` (not a free-form class name). */
+    color: text("color").notNull().default("slate"),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("categories_min_kwh_unique").on(table.minKwh)],
+);
+
+/**
  * Small key/value store for app-wide configuration (currently the Gmail
  * sender). Values are never exposed to the browser except through explicit
  * public projections.
@@ -133,3 +153,5 @@ export type NewMeterAssignment = typeof meterAssignments.$inferInsert;
 export type Reading = typeof readings.$inferSelect;
 export type NewReading = typeof readings.$inferInsert;
 export type MeterState = typeof meterState.$inferSelect;
+export type Category = typeof categories.$inferSelect;
+export type NewCategory = typeof categories.$inferInsert;

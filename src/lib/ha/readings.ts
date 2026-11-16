@@ -17,7 +17,9 @@ import { friendlyName, lastUpdated, parseNumeric, toWatts, unitOf } from "./pars
  * sampler's accumulated `consumed_kwh` for the meter's open assignment, i.e.
  * since the current owner was assigned — never the HA counter's lifetime total.
  */
-export async function buildReadings(meters: Meter[]): Promise<ReadingsResponse> {
+export async function buildReadings(
+  meters: Meter[],
+): Promise<Omit<ReadingsResponse, "month">> {
   const result = await getHaStates();
   const byEntity = new Map(result.states.map((state) => [state.entity_id, state] as const));
 

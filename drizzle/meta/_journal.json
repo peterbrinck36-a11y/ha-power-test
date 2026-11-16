@@ -22,6 +22,13 @@
       "when": 1794833818581,
       "tag": "0002_peaceful_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794841694681,
+      "tag": "0003_motionless_solo",
+      "breakpoints": true
     }
   ]
 }

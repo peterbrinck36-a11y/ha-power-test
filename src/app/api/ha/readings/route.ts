@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
+import type { ReadingsResponse } from "@/lib/api-types";
 import { getSessionUser } from "@/lib/auth";
+import { getMonthSummary } from "@/lib/categories";
 import { db } from "@/lib/db";
 import { buildReadings } from "@/lib/ha/readings";
 import { meters } from "@/lib/schema";
@@ -25,6 +27,11 @@ export async function GET() {
       ? db.select().from(meters).all()
       : db.select().from(meters).where(eq(meters.ownerId, user.id)).all();
 
-  const payload = await buildReadings(rows);
+  const payload: ReadingsResponse = {
+    ...(await buildReadings(rows)),
+    // Owners see their own month-to-date category summary. Admins preview every
+    // meter instead, so an account-level total would be meaningless there.
+    month: user.role === "owner" ? getMonthSummary(user.id) : null,
+  };
   return NextResponse.json(payload);
 }

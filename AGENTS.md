@@ -53,6 +53,7 @@ Running the production build locally: `node .next/standalone/server.js` from
 | `TRUSTED_PROXY_HOPS` | no | default 1; rate-limit IP = Nth entry from the RIGHT of `X-Forwarded-For` (left part is client-forgeable); `0` = ignore header |
 | `SAMPLE_INTERVAL_MS` | no | sampler cadence, default `120000` (2 min), clamped to ≥5s |
 | `SAMPLER_DISABLED` | no | `1` disables the background loop (E2E uses this; the manual endpoint still works) |
+| `APP_TIMEZONE` | no | IANA zone used for monthly category windows and labels (default `Europe/Copenhagen`) |
 | `APP_URL` | no | public base URL for emailed links; when unset the app falls back to the request origin (`x-forwarded-proto`/`host`) |
 | `EMAIL_SECRET` | no | extra key material for encrypting the stored Gmail app password; falls back to `SESSION_SECRET` |
 | `EMAIL_CAPTURE_FILE` | tests only | append outgoing emails to this JSONL file instead of sending through Gmail |
@@ -107,6 +108,18 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   without discarding the running total.
 - In practice each user has exactly one meter, but the data model allows several
   (`meters.owner_id` nullable FK).
+- Consumption categories are ranking tiers, not billing: `categories.min_kwh` thresholds
+  are unique and sorted ascending; the top tier is open-ended. A month total is
+  `SUM(readings.delta_kwh)` over rows whose `recorded_at` falls inside the assignment
+  window **active at that row** (`monthKwhForOwner` in `src/lib/categories.ts`) — never
+  sum `meter_assignments.consumed_kwh`, which spans assignments. This is why
+  reassigning a meter mid-month restarts the owner's monthly progress at 0.
+- Month boundaries come from `monthRange()` in `src/lib/month.ts` (`APP_TIMEZONE`,
+  DST-safe wall-clock conversion). Do not use `new Date(y, m, 1)` — the server may run
+  in UTC while the marina does not.
+- No 0-kWh tier is enforced: a total below the first threshold renders as "Not ranked
+  yet" and the admin page warns when no tier starts at 0. The category card is hidden
+  when there are no tiers; admins previewing `/dashboard` get `month: null` on purpose.
 - UI: mobile-first Tailwind utilities; small hand-rolled components in `src/components`.
 - When `npm install` warns about blocked install scripts (npm ≥ 11.20), approve the
   native/native-adjacent packages: `npm install-scripts approve better-sqlite3 esbuild`
@@ -135,11 +148,15 @@ Copy `.env.example` → `.env` for local development; never commit `.env` or `da
   `meter_state`, 2-minute always-on sampler (`src/instrumentation.ts`), owner totals
   from `consumed_kwh` since assignment (HA `kwh_offset` retired), automatic reset on
   reassignment, `POST /api/admin/sample` manual pass
-- [ ] Phase 6 — email onboarding: Gmail SMTP settings in `/admin/settings` (app
+- [x] Phase 6 — email onboarding: Gmail SMTP settings in `/admin/settings` (app
   password encrypted at rest), test email, emailed temporary passwords, forced
   first-login password change, admin direct password set
-- [ ] Phase 7 — monthly consumption reports per user (query model already supports it:
-  `SUM(readings.delta_kwh)` grouped by month and assignment window)
+- [x] Phase 7 — consumption categories: admin-managed kWh tiers (`categories`),
+  `/admin/categories` CRUD with duplicate-threshold guard, calendar-month totals
+  (Europe/Copenhagen by default via `APP_TIMEZONE`), owner category card with
+  progress to the next tier, `readings` API `month` summary
+- [ ] Phase 8 — monthly consumption reports/archive per user (the query model already
+  supports it: `SUM(readings.delta_kwh)` grouped by month and assignment window)
 
 ## Gotchas learned the hard way
 

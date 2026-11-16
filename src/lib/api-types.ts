@@ -49,6 +49,46 @@ export type ReadingsResponse = {
   error: string | null;
   fetchedAt: string;
   serverTime: string;
+  /**
+   * The signed-in owner's month-to-date consumption + category. Null for admins
+   * (their dashboard is a preview of every owner's meter) and while no
+   * categories are configured.
+   */
+  month: CategoryMonthSummary | null;
+};
+
+/** Palette keys accepted by `src/lib/category-colors.ts`. */
+export type CategoryColor =
+  | "slate"
+  | "amber"
+  | "zinc"
+  | "yellow"
+  | "emerald"
+  | "sky"
+  | "rose";
+
+/** A configured consumption tier, ordered by `minKwh` ascending. */
+export type CategoryTier = {
+  id: number;
+  name: string;
+  /** Inclusive lower bound in kWh. */
+  minKwh: number;
+  color: CategoryColor;
+};
+
+export type CategoryMonthSummary = {
+  /** "November 2026" in the marina time zone. */
+  label: string;
+  /** ISO instant of the local month start. */
+  monthStart: string;
+  /** Month-to-date kWh across all of the owner's meters, rounded to 3 decimals. */
+  totalKwh: number;
+  /** Highest reached tier; null only while the total is below the first tier. */
+  current: CategoryTier | null;
+  /** Next tier up (with the kWh still needed); null in the top tier. */
+  next: (CategoryTier & { remainingKwh: number }) | null;
+  /** 0..1 progress through the current tier (1 once the top tier is reached). */
+  progress: number;
 };
 
 export type SensorsResponse = {

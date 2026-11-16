@@ -181,3 +181,67 @@ export function clearEmailSettings(): void {
     db.close();
   }
 }
+
+export type SeedCategory = {
+  name: string;
+  minKwh: number;
+  color?: string;
+};
+
+/** Inserts/updates a consumption tier (idempotent on the unique threshold). */
+export function seedCategory(category: SeedCategory): number {
+  const db = open();
+  try {
+    db.prepare(
+      `INSERT INTO categories (name, min_kwh, color)
+       VALUES (?, ?, ?)
+       ON CONFLICT(min_kwh) DO UPDATE SET name = excluded.name, color = excluded.color`,
+    ).run(category.name, category.minKwh, category.color ?? "slate");
+    const row = db
+      .prepare("SELECT id FROM categories WHERE min_kwh = ?")
+      .get(category.minKwh) as { id: number };
+    return row.id;
+  } finally {
+    db.close();
+  }
+}
+
+export function clearCategories(): void {
+  const db = open();
+  try {
+    db.prepare("DELETE FROM categories").run();
+  } finally {
+    db.close();
+  }
+}
+
+export type SeedReading = {
+  /** Epoch ms; defaults to a few seconds ago (inside the current month). */
+  recordedAt?: number;
+  deltaKwh: number;
+  powerW?: number | null;
+};
+
+/** Raw sampler rows, so month-to-date totals can be asserted without sampling. */
+export function seedReadings(meterName: string, rows: SeedReading[]): void {
+  const db = open();
+  try {
+    const meterId = meterIdByName(db, meterName);
+    const insert = db.prepare(
+      `INSERT INTO readings
+         (meter_id, recorded_at, power_w, energy_kwh, delta_kwh, power_available, energy_available)
+       VALUES (?, ?, ?, NULL, ?, ?, 1)`,
+    );
+    for (const row of rows) {
+      insert.run(
+        meterId,
+        row.recordedAt ?? Date.now() - 5_000,
+        row.powerW ?? null,
+        row.deltaKwh,
+        row.powerW === null || row.powerW === undefined ? 0 : 1,
+      );
+    }
+  } finally {
+    db.close();
+  }
+}
